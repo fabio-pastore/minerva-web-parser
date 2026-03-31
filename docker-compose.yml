@@ -1,0 +1,6 @@
+services:
+  parser:
+    build: .
+    image: minerva-web-parser
+    volumes:
+      - ./:/app

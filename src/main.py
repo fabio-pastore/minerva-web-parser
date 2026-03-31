@@ -5,7 +5,6 @@ import string
 import regex as re
 
 async def main():
-
     browser_cfg : BrowserConfig = BrowserConfig(headless=True)
 
     # #See_also, #Notes, #References, #External_links, 
@@ -37,6 +36,7 @@ async def main():
                                                       word_count_threshold = 10)
 
     async with AsyncWebCrawler(config=browser_cfg) as crawler:
+        """Crawls webpage and extracts content"""
         # Run the crawler on a URL
         result: list[CrawlResult] = await crawler.arun(url="https://en.wikipedia.org/wiki/Among_Us")
         
@@ -59,11 +59,12 @@ async def main():
 
         generated_tokens: list[str] = cleanup_and_get_tokens(filtered_result[0].markdown.fit_markdown) # change to raw_markdown if not using PruningContentFilter()
 
-        with open('custom_c.md', 'w', encoding='UTF-8') as fout:
+        with open('outputs/custom_c.md', 'w', encoding='UTF-8') as fout:
              fout.write(str(generated_tokens)) # change to raw_markdown if not using PruningContentFilter()
              # fout.write(filtered_result[0].markdown.fit_markdown)
 
 def cleanup_and_get_tokens(md: str) -> list[str]:
+    '''Cleans up the markdown and returns tokens'''
     punctuation_remover: dict[int, int | None] = str.maketrans('', '', string.punctuation)
     to_remove: list[str] = ["## See also", "## Notes", "## References", "## Voci correlate", "## Note", "## Bibliografia"]
     for elem in to_remove:
