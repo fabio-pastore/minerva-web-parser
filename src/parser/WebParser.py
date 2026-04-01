@@ -23,18 +23,19 @@ class WebParser:
     MARKDOWN_GEN_OPTIONS: dict[str, bool] = {
         'ignore_images': True, 
         'escape_html': True, 
-        'ignore_links': True 
+        'ignore_links': False 
     }
 
     def __init__(self):
         self.browser_cfg : BrowserConfig = BrowserConfig(headless=True)
-        self.crawler_cfg : CrawlerRunConfig = CrawlerRunConfig(target_elements=WebParser.TARGETS, excluded_tags=WebParser.TAG_EXCLUSIONS, 
-                                                               markdown_generator= DefaultMarkdownGenerator(PruningContentFilter(), options=WebParser.MARKDOWN_GEN_OPTIONS),
-                                                               excluded_selector=WebParser.CSS_EXCLUSIONS,
+        self.crawler_cfg : CrawlerRunConfig = CrawlerRunConfig(target_elements = WebParser.TARGETS, excluded_tags=WebParser.TAG_EXCLUSIONS, 
+                                                               markdown_generator = DefaultMarkdownGenerator(PruningContentFilter(), options=WebParser.MARKDOWN_GEN_OPTIONS),
+                                                               excluded_selector = WebParser.CSS_EXCLUSIONS,
                                                                only_text = False, 
                                                                remove_forms = True, 
                                                                remove_consent_popups = True, 
-                                                               word_count_threshold = WebParser.WORD_COUNT_THRESHOLD)
+                                                               word_count_threshold = WebParser.WORD_COUNT_THRESHOLD,
+                                                               cache_mode = CacheMode.BYPASS)
 
     def __cleanup_and_get_tokens(self, md: str) -> str: # change back to list[str] when done testing
         '''Cleans up the markdown and returns cleaned markdown string'''
@@ -60,7 +61,7 @@ class WebParser:
             result: list[CrawlResult] = await crawler.arun(url)
             
             if (WebParser.DEBUG):
-                print(f"[PARSER]: Original HTML file length (in characters): {len(result[0].html)}")
+                print(f"[WebParser]: Original HTML file length (in characters): {len(result[0].html)}")
                                         
             filtered_result : list[CrawlResult] = await crawler.arun(url, config = self.crawler_cfg)
             soup = BeautifulSoup(filtered_result[0].html, 'html.parser')
@@ -71,7 +72,9 @@ class WebParser:
             body_length = len(page_markdown)
 
             if (WebParser.DEBUG):
-                print(f"[PARSER] Successfully parsed article titled '{title}' for a total of {body_length} characters.")
+                print(f"[WebParser] Successfully parsed article titled '{title}' for a total of {body_length} characters.")
+                if (not WebParser.MARKDOWN_GEN_OPTIONS.get("ignore_links")):
+                    print("[WebParser] [WARNING] Links are currently not being ignored! To change this behaviour, set 'ignore_links' in MARKDOWN_GEN_OPTIONS to True.")
 
             # generated_tokens: list[str] = self.__cleanup_and_get_tokens(filtered_result[0].markdown.fit_markdown) # change to raw_markdown if not using PruningContentFilter()
             clean_html: str = filtered_result[0].cleaned_html # pure HTML (no scripts, no CSS)

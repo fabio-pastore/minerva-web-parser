@@ -1,5 +1,5 @@
 import asyncio
-from parser.WebParser import WebParser
+from src.parser.WebParser import WebParser
 
 async def main():
     myParser : WebParser = WebParser()
