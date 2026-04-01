@@ -5,6 +5,7 @@ import regex as re
 
 class WebParser:
 
+    SUPPORTED_DOMAINS: list[str] = ['it.wikipedia.org']
     DEBUG: bool = True # print debug messages
 
     CSS_EXCLUSIONS: str = '''
@@ -55,21 +56,26 @@ class WebParser:
         return md
         
     async def parse_url(self, url: str) -> dict[str, str]:
-        """Crawls webpage and extracts content"""
+        """Crawls webpage and extracts content. If crawl fails an empty dictionary is returned."""
         async with AsyncWebCrawler(config=self.browser_cfg) as crawler:
         # Run the crawler on a URL
-            result: list[CrawlResult] = await crawler.arun(url)
-            
-            if (WebParser.DEBUG):
-                print(f"[WebParser]: Original HTML file length (in characters): {len(result[0].html)}")
                                         
             filtered_result : list[CrawlResult] = await crawler.arun(url, config = self.crawler_cfg)
+
+            success: bool = filtered_result.success
+            if (not success):
+                return {} # return empty dict on failure
+
             soup = BeautifulSoup(filtered_result[0].html, 'html.parser')
             h1_elem = soup.find('h1', id='firstHeading')
             title: str = h1_elem.get_text(strip=True) if h1_elem else 'Unknown title'
 
-            page_markdown: str = self.__cleanup_and_get_tokens(filtered_result[0].markdown.fit_markdown) # change to raw_markdown if not using PruningContentFilter()
+            page_markdown: str = f"# {title}\n" + filtered_result[0].markdown.fit_markdown # add title to extracted markdown
+            page_markdown = self.__cleanup_and_get_tokens(page_markdown) # change to raw_markdown if not using PruningContentFilter()
             body_length = len(page_markdown)
+
+            if (WebParser.DEBUG):
+                print(f"[WebParser]: Original HTML file length (in characters): {len(filtered_result[0].html)}")
 
             if (WebParser.DEBUG):
                 print(f"[WebParser] Successfully parsed article titled '{title}' for a total of {body_length} characters.")
@@ -78,10 +84,11 @@ class WebParser:
 
             # generated_tokens: list[str] = self.__cleanup_and_get_tokens(filtered_result[0].markdown.fit_markdown) # change to raw_markdown if not using PruningContentFilter()
             clean_html: str = filtered_result[0].cleaned_html # pure HTML (no scripts, no CSS)
+            domain: str = url.split('/')[2]
 
             ret: dict[str, str] = {
                 "url": url,
-                "domain": "sus",
+                "domain": domain,
                 "title": title,
                 "html_text": clean_html,
                 "parsed_text": page_markdown # QUESTION: do we also want links? 
