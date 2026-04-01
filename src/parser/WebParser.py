@@ -1,7 +1,6 @@
 from bs4 import BeautifulSoup
 from crawl4ai import AsyncWebCrawler, CrawlResult, CrawlerRunConfig, DefaultMarkdownGenerator, PruningContentFilter, CacheMode, BrowserConfig
-import string
-import regex as re
+import json
 
 class WebParser:
 
@@ -14,11 +13,12 @@ class WebParser:
     .vector-sticky-header, .mw-footer, .vector-sitenotice-container, 
     .reflist, .refbegin, .mw-references-wrap, .infobox, .mw-file-description,
     .thumb, .mw-editsection, .navbox, .side-box, .hatnote[role="complementary"], 
-    .floatright''' # add .wikitable if too much useless data is parsed. TODO: modify to include only Italian exclusions
+    .floatright, .infobox, .sinottico, .vector-appearance-landmark, .vector-column-start,
+    .mw-header, .vector-page-toolbar, .catlinks''' # add .wikitable if too much useless data is parsed. TODO: modify to include only Italian exclusions
     
     TARGETS: list[str] = ['.mw-parser-output']
     TAG_EXCLUSIONS: list[str] = ['nav', 'footer', 'aside', 'script', 'style', 'noscript', 'header', 'figure']
-    MARKDOWN_EXCLUSIONS: list[str] = ["## See also", "## Notes", "## References", "## Voci correlate", "## Note", "## Bibliografia"]
+    MARKDOWN_EXCLUSIONS: list[str] = ["## See also", "## Notes", "## References", "## Voci correlate", "## Note", "## Bibliografia, ## Collegamenti esterni, ## External links"]
     WORD_COUNT_THRESHOLD: int = 10
 
     MARKDOWN_GEN_OPTIONS: dict[str, bool] = {
@@ -40,19 +40,12 @@ class WebParser:
 
     def __cleanup_and_get_tokens(self, md: str) -> str: # change back to list[str] when done testing
         '''Cleans up the markdown and returns cleaned markdown string'''
-        punctuation_remover: dict[int, int | None] = str.maketrans('', '', string.punctuation)
+        md = json.dumps(md) # escape markdown string for JSON (also adds double quotes at the beginning and end of the string, which will be removed in the final output)
         to_remove: list[str] = WebParser.MARKDOWN_EXCLUSIONS
         for elem in to_remove:
             index_found = md.find(elem)
             if (index_found != -1):
                 md = md[:index_found] # delete whatever follows since we have no need for it
-        '''
-        md = re.sub(r'\[[a-zA-Z0-9]+\]', '', md) # remove markdown tags [1], ...
-        md = re.sub(r'[^\w\s]', ' ', md) # further remove markdown (is this necessary?)
-        clean_str: str = md.translate(punctuation_remover).strip().lower()
-        tokens: list[str] = clean_str.split()
-        return tokens
-        '''
         return md
         
     async def parse_url(self, url: str) -> dict[str, str]:
@@ -63,8 +56,9 @@ class WebParser:
             filtered_result : list[CrawlResult] = await crawler.arun(url, config = self.crawler_cfg)
 
             success: bool = filtered_result.success
-            if (not success):
-                return {} # return empty dict on failure
+
+            if (not success or filtered_result[0].markdown.fit_markdown == '\n'): # check for empty results or crawling errors (URL not reachable, etc.)
+                return {} # return empty dict on crawl failure
 
             soup = BeautifulSoup(filtered_result[0].html, 'html.parser')
             h1_elem = soup.find('h1', id='firstHeading')
@@ -82,7 +76,6 @@ class WebParser:
                 if (not WebParser.MARKDOWN_GEN_OPTIONS.get("ignore_links")):
                     print("[WebParser] [WARNING] Links are currently not being ignored! To change this behaviour, set 'ignore_links' in MARKDOWN_GEN_OPTIONS to True.")
 
-            # generated_tokens: list[str] = self.__cleanup_and_get_tokens(filtered_result[0].markdown.fit_markdown) # change to raw_markdown if not using PruningContentFilter()
             clean_html: str = filtered_result[0].cleaned_html # pure HTML (no scripts, no CSS)
             domain: str = url.split('/')[2]
 
