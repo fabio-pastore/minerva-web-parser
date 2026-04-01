@@ -14,6 +14,7 @@ class ParseOutput(BaseModel):
     title: str
     html_text: str
     parsed_text: str
+
 class SupportedDomains(BaseModel):
     domains: list[str]
 
@@ -84,10 +85,11 @@ def get_all_golden_standard_domain(domain: str):
 
 def get_tokens(raw_text: str) -> set[str]:
     punctuation_remover: dict[int, int | None] = str.maketrans('', '', string.punctuation)
-    raw_text = re.sub(r'\[[a-zA-Z0-9]+\]', '', raw_text) # remove markdown tags [1], ...
-    raw_text = re.sub(r'[^\w\s]', ' ', raw_text) # further remove markdown (is this necessary?)
-    clean_str: str = raw_text.translate(punctuation_remover).strip().lower()
-    tokens: set[str] = set(clean_str.split())
+    raw_text = re.sub(r'\[[a-zA-Z0-9]+\]', '', raw_text) # remove markdown citation tags (e.g. [1], [note1], ...)
+    raw_text: str = raw_text.translate(punctuation_remover) # essential to transform words like well-being -> wellbeing
+    raw_text = re.sub(r'[^\w\s]', ' ', raw_text) # remove symbols like —, •, → that string.punctuation might have missed
+    
+    tokens: set[str] = set(raw_text.strip().lower().split())
     return tokens
 
 @app.post("/evaluate")

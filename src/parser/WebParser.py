@@ -4,6 +4,13 @@ import json
 
 class WebParser:
 
+    CSS_EXCLUSIONS_NEW: str = '''
+    .infobox, .sinottico, .mw-editsection, .mw-references-wrap, .mw-references-columns, .noprint, .CdA, .mw-ref, .reference, .mw-empty-elt
+    '''
+    TAG_EXCLUSIONS_NEW: list[str] = ['style', 'link', 'cite']
+
+
+
     SUPPORTED_DOMAINS: list[str] = ['it.wikipedia.org']
     DEBUG: bool = True # print debug messages
 
@@ -15,10 +22,10 @@ class WebParser:
     .thumb, .mw-editsection, .navbox, .side-box, .hatnote[role="complementary"], 
     .floatright, .infobox, .sinottico, .vector-appearance-landmark, .vector-column-start,
     .mw-header, .vector-page-toolbar, .catlinks''' # add .wikitable if too much useless data is parsed. TODO: modify to include only Italian exclusions
-    
+
     TARGETS: list[str] = ['.mw-parser-output']
     TAG_EXCLUSIONS: list[str] = ['nav', 'footer', 'aside', 'script', 'style', 'noscript', 'header', 'figure']
-    MARKDOWN_EXCLUSIONS: list[str] = ["## See also", "## Notes", "## References", "## Voci correlate", "## Note", "## Bibliografia, ## Collegamenti esterni, ## External links"]
+    MARKDOWN_EXCLUSIONS: list[str] = ["## See also", "## Notes", "## References", "## External links", "## Voci correlate", "## Note", "## Bibliografia", "## Collegamenti esterni", "## Altri progetti"]
     WORD_COUNT_THRESHOLD: int = 10
 
     MARKDOWN_GEN_OPTIONS: dict[str, bool] = {
