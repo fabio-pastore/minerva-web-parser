@@ -86,8 +86,8 @@ def get_all_golden_standard_domain(domain: str) -> ListGSEntry:
     return ListGSEntry(gold_standard=data)
 
 def get_tokens(raw_text: str) -> set[str]:
-    punctuation_remover: dict[int, int | None] = str.maketrans('', '', string.punctuation)
-    raw_text = re.sub(r'\[[a-zA-Z0-9]+\]', '', raw_text) # remove markdown citation tags (e.g. [1], [note1], ...) 
+    punctuation_remover: dict[int, int | None] = str.maketrans({char: ' ' for char in string.punctuation})
+    raw_text = re.sub(r'\[[a-zA-Z0-9]+\]', ' ', raw_text) # remove any residual markdown citation tags (e.g. [1], [note1], ...) 
     raw_text: str = raw_text.translate(punctuation_remover) # essential to transform words like well-being -> wellbeing
     raw_text = re.sub(r'[^\w\s]', ' ', raw_text) # remove symbols like —, •, → that string.punctuation might have missed
     
@@ -96,8 +96,8 @@ def get_tokens(raw_text: str) -> set[str]:
 
 @app.post("/evaluate")
 def evaluate_parsing(eval_input: EvaluationInput) -> ParseEvaluation:
-    parsed_text: str = eval_input.parsed_text.encode('utf-8').decode('unicode_escape')
-    gold_text: str = eval_input.gold_text.encode('utf-8').decode('unicode_escape')
+    parsed_text: str = eval_input.parsed_text
+    gold_text: str = eval_input.gold_text
     tokens_extracted: set[str] = get_tokens(parsed_text)
     tokens_gs: set[str] = get_tokens(gold_text)
     precision: float = len(tokens_extracted.intersection(tokens_gs)) / len(tokens_extracted)

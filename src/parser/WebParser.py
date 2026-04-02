@@ -1,6 +1,7 @@
 from bs4 import BeautifulSoup
 from crawl4ai import AsyncWebCrawler, CrawlResult, CrawlerRunConfig, DefaultMarkdownGenerator, PruningContentFilter, CacheMode, BrowserConfig
 import json
+import regex as re
 
 class WebParser:
 
@@ -42,13 +43,25 @@ class WebParser:
     .reflist, .refbegin, .mw-references-wrap, .infobox, .mw-file-description,
     .thumb, .mw-editsection, .navbox, .side-box, .hatnote[role="complementary"], 
     .floatright, .infobox, .sinottico, .vector-appearance-landmark, .vector-column-start,
-    .mw-header, .vector-page-toolbar, .catlinks, .mw-references-wrap''' # add .wikitable if too much useless data is parsed. TODO: modify to include only Italian exclusions
+    .mw-header, .vector-page-toolbar, .catlinks, .mw-references-wrap'''
     
     TAG_EXCLUSIONS_OLD: list[str] = ['nav', 'footer', 'aside', 'script', 'style', 'noscript', 'header', 'figure']
 
 
     TARGETS: list[str] = ['.mw-parser-output']
-    MARKDOWN_EXCLUSIONS: list[str] = ["## See also", "## Notes", "## References", "## External links", "## Voci correlate", "## Note", "## Bibliografia", "## Collegamenti esterni", "## Altri progetti"]
+
+    """
+    MARKDOWN_EXCLUSIONS: list[str] = ["## See also", "## Notes", "## References", "## External links", "## Voci correlate", 
+                                      "## Note", "## Bibliografia", "## Collegamenti esterni", "## Altri progetti", "## Pagine correlate", 
+                                      "## Strumenti"]
+
+    This only works for pages that actually put a single space after their double hashtags (and obviously pages can be found where the authors
+    were kind of enough to leave this gift for us!). Regex below solves this issue.
+    """
+    
+    MARKDOWN_REGEX = r"##\s+(?:See also|Notes|References|External links|Voci correlate|Note|Bibliografia|Collegamenti esterni|Altri progetti|Pagine correlate|Strumenti)" 
+    # this is necessary since apparently some pages contain an arbitrary number of whitespaces between "##" and "Notes, References, etc."
+
     WORD_COUNT_THRESHOLD: int = 10
 
     MARKDOWN_GEN_OPTIONS: dict[str, bool] = {
@@ -70,12 +83,12 @@ class WebParser:
 
     def __cleanup(self, md: str) -> str: # change back to list[str] when done testing
         '''Cleans up the markdown and returns cleaned markdown string'''
-        to_remove: list[str] = WebParser.MARKDOWN_EXCLUSIONS
-        for elem in to_remove:
-            index_found = md.find(elem)
-            if (index_found != -1):
-                md = md[:index_found] # delete whatever follows since we have no need for it
-        md = json.dumps(md) # escape markdown string for JSON (also adds double quotes at the beginning and end of the string, which will be removed in the final output)
+        re_match = re.search(WebParser.MARKDOWN_REGEX, md, flags=re.IGNORECASE)
+        if (re_match):
+            index_match: int = re_match.start()
+            md = md[:index_match]
+        md = re.sub(r'\[[a-zA-Z0-9]+\]', ' ', md) # remove markdown unlinked notes
+        md = json.dumps(md, ensure_ascii=False) # escape markdown string for JSON (also adds double quotes at the beginning and end of the string, which will be removed in the final output)
         if len(md) >= 2:
             md = md[1:-1] # remove double quotes from json.dumps()
         return md
@@ -99,6 +112,7 @@ class WebParser:
             # investigating certain hyperlink words missing, PruningContentFilter() might be the cause (i.e. use raw_markdown)
             page_markdown: str = f"# {title}\n" + result.markdown.raw_markdown # add title to extracted markdown
             page_markdown = self.__cleanup(page_markdown)
+            # page_markdown = page_markdown.encode('utf-8').decode('unicode_escape')
             body_length = len(page_markdown)
 
             if (WebParser.DEBUG):
