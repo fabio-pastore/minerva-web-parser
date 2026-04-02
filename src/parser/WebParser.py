@@ -29,6 +29,10 @@ class WebParser:
 
 
     SUPPORTED_DOMAINS: list[str] = ['it.wikipedia.org']
+    GS_WEBPAGES: dict[str, list[str]] = {
+        'it.wikipedia.org': ['https://it.wikipedia.org/wiki/Among_Us']
+    }
+
     DEBUG: bool = True # print debug messages
 
     CSS_EXCLUSIONS_OLD: str = '''
@@ -64,7 +68,7 @@ class WebParser:
                                                                word_count_threshold = WebParser.WORD_COUNT_THRESHOLD,
                                                                cache_mode = CacheMode.BYPASS)
 
-    def __cleanup_and_get_tokens(self, md: str) -> str: # change back to list[str] when done testing
+    def __cleanup(self, md: str) -> str: # change back to list[str] when done testing
         '''Cleans up the markdown and returns cleaned markdown string'''
         to_remove: list[str] = WebParser.MARKDOWN_EXCLUSIONS
         for elem in to_remove:
@@ -72,7 +76,8 @@ class WebParser:
             if (index_found != -1):
                 md = md[:index_found] # delete whatever follows since we have no need for it
         md = json.dumps(md) # escape markdown string for JSON (also adds double quotes at the beginning and end of the string, which will be removed in the final output)
-        # TODO: remove double quotes added by json.dumps()
+        if len(md) < 2:
+            md = md[:1:-1] # remove double quotes from json.dumps()
         return md
         
     async def parse_url(self, url: str) -> dict[str, str]:
@@ -93,7 +98,8 @@ class WebParser:
 
             # investigating certain hyperlink words missing, PruningContentFilter() might be the cause (i.e. use raw_markdown)
             page_markdown: str = f"# {title}\n" + filtered_result[0].markdown.raw_markdown # add title to extracted markdown
-            page_markdown = self.__cleanup_and_get_tokens(page_markdown) 
+            page_markdown = self.__cleanup(page_markdown)
+            page_markdown = page_markdown.encode('utf-8').decode('unicode_escape') #translate escape codes into accented chars 
             body_length = len(page_markdown)
 
             if (WebParser.DEBUG):

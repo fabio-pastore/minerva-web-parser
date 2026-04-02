@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Boh</title>
+</head>
+<body>
+    <form method="post" action="/parse_url_evaluate_perf">
+        <label>URL: </label>
+        <input type="text" name="url" placeholder="https://">
+
+        <label>Select GS</label>
+        <select name="url_select" onchange="document.querySelector('input[name=url]').value = this.value">
+            <option value=""> GS URL </option>
+            {% for url in gs_urls %}
+                <option value="{{ url }}">{{ url }}</option>
+            {% endfor %}
+        </select>
+
+        <button type="submit">Parse</button>
+    </form>
+
+    
+</body>
+</html>

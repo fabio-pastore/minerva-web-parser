@@ -10,4 +10,4 @@ RUN playwright install --with-deps chromium
 
 COPY . .
 
-CMD ["python", "src/main.py"]
+CMD ["uvicorn", "rest.server:app", "--host", "0.0.0.0", "--port", "8003"]

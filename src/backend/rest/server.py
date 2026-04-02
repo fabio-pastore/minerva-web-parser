@@ -41,7 +41,7 @@ class ParseEvaluation(BaseModel):
     token_level_eval: TokenLevelEval
 
 @app.get("/parse/{url:path}")
-async def parse_url(url: str = Path(...)):
+async def parse_url(url: str = Path(...)) -> ParseOutput:
     domain_to_parse: str = url.split("/")[2]
     if domain_to_parse not in WebParser.SUPPORTED_DOMAINS:
         raise HTTPException(status_code=400, detail="Domain not supported")
@@ -54,15 +54,15 @@ async def parse_url(url: str = Path(...)):
 
 # Endpoint to get the list of supported domains
 @app.get("/domains")
-def get_supported_domains():
+def get_supported_domains() -> SupportedDomains:
     return SupportedDomains(domains=WebParser.SUPPORTED_DOMAINS)
 
 @app.get("/gold_standard/{url:path}")
-def get_gold_standard(url: str = Path(...)):
+def get_gold_standard(url: str = Path(...)) -> GSEntry:
     domain = url.split("/")[2]
     if domain not in WebParser.SUPPORTED_DOMAINS:
         raise HTTPException(status_code=400, detail="Domain not supported")
-    file_path = f"src/gs_data/" + domain.replace(".", "_") + "_gs.json"
+    file_path = f"gs_data/" + domain.replace(".", "_") + "_gs.json"     # not src/ anymore for docker
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="Gold standard not found for the given URL")
     with open(file=file_path, mode='r', encoding='UTF-8') as fin:
@@ -75,10 +75,10 @@ def get_gold_standard(url: str = Path(...)):
     raise HTTPException(status_code=404, detail="Gold standard not found for the given URL")
 
 @app.get("/full_gold_standard/{domain}")
-def get_all_golden_standard_domain(domain: str):
+def get_all_golden_standard_domain(domain: str) -> ListGSEntry:
     if domain not in WebParser.SUPPORTED_DOMAINS:
         raise HTTPException(status_code=400, detail="Domain not supported")
-    file_path: str = "src/gs_data/" + domain.replace(".", "_") + "_gs.json"
+    file_path: str = "gs_data/" + domain.replace(".", "_") + "_gs.json" # same as above
     with open(file_path, mode='r', encoding='UTF-8') as fin:
         data = json.load(fin)
     return ListGSEntry(gold_standard=data)
@@ -97,7 +97,7 @@ def get_tokens(raw_text: str) -> set[str]:
     return tokens
 
 @app.post("/evaluate")
-def evaluate_parsing(eval_input: EvaluationInput):
+def evaluate_parsing(eval_input: EvaluationInput) -> ParseEvaluation:
     parsed_text: str = eval_input.parsed_text
     gold_text: str = eval_input.gold_text
     tokens_extracted: set[str] = get_tokens(parsed_text)
@@ -110,3 +110,37 @@ def evaluate_parsing(eval_input: EvaluationInput):
     return ParseEvaluation(token_level_eval=TokenLevelEval(precision=precision, recall=recall, f1=f1))
 
 # TODO: implement /full_gs_eval
+
+@app.get("/full_gs_eval/{domain}")
+async def full_gs_eval(domain: str) -> ParseEvaluation:
+    if domain not in WebParser.SUPPORTED_DOMAINS:
+        raise HTTPException(status_code=400, detail="Domain not supported")
+    
+    evals: list[ParseEvaluation] = []
+    gs: dict[str, str] = {}
+    file_path: str = "gs_data/" + domain.replace(".", "_") + "_gs.json" #same
+    with open(file_path, mode='r', encoding='UTF-8') as fin:
+        data = json.load(fin)
+        for entry in data:
+            gs[entry.get('url')] = entry.get('gold_text')
+
+    for url in gs.keys():
+        output: ParseOutput = await parse_url(url)
+        parsed_text: str = output.parsed_text
+
+        evals.append(evaluate_parsing(EvaluationInput(parsed_text=parsed_text, gold_text=gs.get(url))))
+    
+    token_evals: list[TokenLevelEval] = [parse_eval.token_level_eval for parse_eval in evals]
+
+    precisions: list[float] = [teval.precision for teval in token_evals]
+    recalls: list[float] = [teval.recall for teval in token_evals]
+    f1s: list[float] = [teval.f1 for teval in token_evals]
+
+    full_token_eval = TokenLevelEval(precision= sum(precisions)/len(precisions), recall= sum(recalls)/len(recalls), f1 = sum(f1s)/len(f1s))
+
+    return ParseEvaluation(token_level_eval=full_token_eval)
+        
+
+
+
+    
