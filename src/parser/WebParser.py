@@ -76,8 +76,8 @@ class WebParser:
             if (index_found != -1):
                 md = md[:index_found] # delete whatever follows since we have no need for it
         md = json.dumps(md) # escape markdown string for JSON (also adds double quotes at the beginning and end of the string, which will be removed in the final output)
-        if len(md) < 2:
-            md = md[:1:-1] # remove double quotes from json.dumps()
+        if len(md) >= 2:
+            md = md[1:-1] # remove double quotes from json.dumps()
         return md
         
     async def parse_url(self, url: str) -> dict[str, str]:
@@ -99,7 +99,6 @@ class WebParser:
             # investigating certain hyperlink words missing, PruningContentFilter() might be the cause (i.e. use raw_markdown)
             page_markdown: str = f"# {title}\n" + result.markdown.raw_markdown # add title to extracted markdown
             page_markdown = self.__cleanup(page_markdown)
-            page_markdown = page_markdown.encode('utf-8').decode('unicode_escape') #translate escape codes into accented chars 
             body_length = len(page_markdown)
 
             if (WebParser.DEBUG):
