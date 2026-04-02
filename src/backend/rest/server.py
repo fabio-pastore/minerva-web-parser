@@ -42,7 +42,9 @@ class ParseEvaluation(BaseModel):
 
 @app.get("/parse/{url:path}")
 async def parse_url(url: str = Path(...)) -> ParseOutput:
+    print(f"[BACKEND-SERVER] Received parsing request for URL: {url}")
     domain_to_parse: str = url.split("/")[2]
+    print(f"[BACKEND-SERVER] Extracted domain from URL: {domain_to_parse}")
     if domain_to_parse not in WebParser.SUPPORTED_DOMAINS:
         raise HTTPException(status_code=400, detail="Domain not supported")
     parser : WebParser = WebParser()

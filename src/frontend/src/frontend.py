@@ -8,7 +8,7 @@ templates = Jinja2Templates(directory="templates") # check if this works
 
 API_BACKEND_URL = "http://backend:8003"
 
-def post_data(req_url: str, json_payload: str) -> any | None:
+def post_data(req_url: str, json_payload: str) -> any:
     try:
         response = requests.post(req_url, json=json_payload)
         response.raise_for_status()
@@ -17,7 +17,7 @@ def post_data(req_url: str, json_payload: str) -> any | None:
         
     return response.json()
 
-def get_data(req_url: str) -> any | None:
+def get_data(req_url: str) -> any:
     try:
         response = requests.get(req_url)
         response.raise_for_status()
@@ -44,7 +44,7 @@ def index(request: Request):
 @app.post("/parse_url_evaluate_perf")
 def parse_url_evaluate_perf(request: Request, url: str = Form(...)):
     
-    request_url: str = API_BACKEND_URL + "/parse"
+    request_url: str = API_BACKEND_URL + f"/parse/{url}"
     data = get_data(request_url)
     if data is None:
         raise HTTPException(status_code=503, detail=f"Failed to retrieve parsing of URL '{url}' from API server")

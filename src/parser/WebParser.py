@@ -85,32 +85,32 @@ class WebParser:
         async with AsyncWebCrawler(config=self.browser_cfg) as crawler:
         # Run the crawler on a URL
                                         
-            filtered_result : list[CrawlResult] = await crawler.arun(url, config = self.crawler_cfg)
+            result : CrawlResult = await crawler.arun(url, config = self.crawler_cfg)
 
-            success: bool = filtered_result.success
+            success: bool = result.success
 
-            if (not success or filtered_result[0].markdown.raw_markdown == '\n'): # check for empty results or crawling errors (URL not reachable, etc.)
+            if (not success or result.markdown.raw_markdown == '\n'): # check for empty results or crawling errors (URL not reachable, etc.)
                 return {} # return empty dict on crawl failure
 
-            soup = BeautifulSoup(filtered_result[0].html, 'html.parser')
+            soup = BeautifulSoup(result.html, 'html.parser')
             h1_elem = soup.find('h1', id='firstHeading')
             title: str = h1_elem.get_text(strip=True) if h1_elem else 'Unknown title'
 
             # investigating certain hyperlink words missing, PruningContentFilter() might be the cause (i.e. use raw_markdown)
-            page_markdown: str = f"# {title}\n" + filtered_result[0].markdown.raw_markdown # add title to extracted markdown
+            page_markdown: str = f"# {title}\n" + result.markdown.raw_markdown # add title to extracted markdown
             page_markdown = self.__cleanup(page_markdown)
             page_markdown = page_markdown.encode('utf-8').decode('unicode_escape') #translate escape codes into accented chars 
             body_length = len(page_markdown)
 
             if (WebParser.DEBUG):
-                print(f"[WebParser]: Original HTML file length (in characters): {len(filtered_result[0].html)}")
+                print(f"[WebParser]: Original HTML file length (in characters): {len(result.html)}")
 
             if (WebParser.DEBUG):
                 print(f"[WebParser] Successfully parsed article titled '{title}' for a total of {body_length} characters.")
                 if (not WebParser.MARKDOWN_GEN_OPTIONS.get("ignore_links")):
                     print("[WebParser] [WARNING] Links are currently not being ignored! To change this behaviour, set 'ignore_links' in MARKDOWN_GEN_OPTIONS to True.")
 
-            clean_html: str = filtered_result[0].cleaned_html # pure HTML (no scripts, no CSS)
+            clean_html: str = result.cleaned_html # pure HTML (no scripts, no CSS)
             domain: str = url.split('/')[2]
 
             ret: dict[str, str] = {

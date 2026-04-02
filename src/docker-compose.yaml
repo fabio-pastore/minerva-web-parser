@@ -7,6 +7,7 @@ services:
     volumes:
       - ./gs_data:/app/gs_data
       - ./domains.json:/app/domains.json
+      - ./parser:/app/src/parser
   frontend:
     build: ./frontend
     ports:
