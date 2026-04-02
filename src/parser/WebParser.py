@@ -4,34 +4,52 @@ import json
 
 class WebParser:
 
-    CSS_EXCLUSIONS_NEW: str = '''
-    .infobox, .sinottico, .mw-editsection, .mw-references-wrap, .mw-references-columns, .noprint, .CdA, .mw-ref, .reference, .mw-empty-elt
     '''
-    TAG_EXCLUSIONS_NEW: list[str] = ['style', 'link', 'cite']
+    webpages: 
+    https://it.wikipedia.org/wiki/Among_Us
+    https://it.wikipedia.org/wiki/YouTube
+    https://it.wikipedia.org/wiki/Stati_del_mondo
+    https://it.wikipedia.org/wiki/1860      NOTE: doesn't parse the calendar at the bottom of the page for some reason
+    https://it.wikipedia.org/wiki/Aiuto:Wikilink
+    https://it.wikipedia.org/wiki/San_Marino    NOTE: very long, hard to get GS
+            
+    '''
+
+    CSS_EXCLUSIONS: str = '''
+    .infobox, .sinottico, .mw-editsection, .mw-references-wrap, .mw-references-columns, .noprint, .CdA, .mw-ref, .reference, .mw-empty-elt,
+    .hatnote, .avviso, .avviso-contenuto, .vedi-anche, .thumb, .mw-file-description, .mw-file-element, .navigation-not-searchable,
+    .col-begin[role="presentation"], .unsortable, .flagicon, .noviewer, .itwiki-template-da-Aiuto-a-Wikipedia, .itwiki-template-approfondimento-intestazione,
+    .itwiki-template-approfondimento, .itwiki-template-approfondimento-destra, .mw-collapsible, .mw-collapsed,
+    .mw-made-collapsible, .box-Unreferenced_section, .ambox-Unreferenced, .gallery, .mw-gallery-traditional
+    '''
+
+    TAG_EXCLUSIONS: list[str] = ['style', 'link', 'cite', 'script', 'noscript', 'figure', 'meta', 'img']
 
 
 
     SUPPORTED_DOMAINS: list[str] = ['it.wikipedia.org']
     DEBUG: bool = True # print debug messages
 
-    CSS_EXCLUSIONS: str = '''
+    CSS_EXCLUSIONS_OLD: str = '''
     #mw-head, #mw-panel, #footer, #vector-main-menu, .mw-content-subtitle,
     .vector-header-container, .vector-column-start, .shortdescription, 
     .vector-sticky-header, .mw-footer, .vector-sitenotice-container, 
     .reflist, .refbegin, .mw-references-wrap, .infobox, .mw-file-description,
     .thumb, .mw-editsection, .navbox, .side-box, .hatnote[role="complementary"], 
     .floatright, .infobox, .sinottico, .vector-appearance-landmark, .vector-column-start,
-    .mw-header, .vector-page-toolbar, .catlinks''' # add .wikitable if too much useless data is parsed. TODO: modify to include only Italian exclusions
+    .mw-header, .vector-page-toolbar, .catlinks, .mw-references-wrap''' # add .wikitable if too much useless data is parsed. TODO: modify to include only Italian exclusions
+    
+    TAG_EXCLUSIONS_OLD: list[str] = ['nav', 'footer', 'aside', 'script', 'style', 'noscript', 'header', 'figure']
+
 
     TARGETS: list[str] = ['.mw-parser-output']
-    TAG_EXCLUSIONS: list[str] = ['nav', 'footer', 'aside', 'script', 'style', 'noscript', 'header', 'figure']
     MARKDOWN_EXCLUSIONS: list[str] = ["## See also", "## Notes", "## References", "## External links", "## Voci correlate", "## Note", "## Bibliografia", "## Collegamenti esterni", "## Altri progetti"]
     WORD_COUNT_THRESHOLD: int = 10
 
     MARKDOWN_GEN_OPTIONS: dict[str, bool] = {
         'ignore_images': True, 
         'escape_html': True, 
-        'ignore_links': False 
+        'ignore_links': True
     }
 
     def __init__(self):

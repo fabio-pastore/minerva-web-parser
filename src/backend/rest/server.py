@@ -85,7 +85,11 @@ def get_all_golden_standard_domain(domain: str):
 
 def get_tokens(raw_text: str) -> set[str]:
     punctuation_remover: dict[int, int | None] = str.maketrans('', '', string.punctuation)
-    raw_text = re.sub(r'\[[a-zA-Z0-9]+\]', '', raw_text) # remove markdown citation tags (e.g. [1], [note1], ...)
+    #raw_text = re.sub(r'\[[a-zA-Z0-9]+\]', '', raw_text) # remove markdown citation tags (e.g. [1], [note1], ...) 
+    '''
+    NOTE: removed because it also deletes useful text, since text with hyperlinks are wrapped by [ ].
+    The new CSS_EXCLUSIONS now also covers the removal of markdown citations.
+    '''
     raw_text: str = raw_text.translate(punctuation_remover) # essential to transform words like well-being -> wellbeing
     raw_text = re.sub(r'[^\w\s]', ' ', raw_text) # remove symbols like —, •, → that string.punctuation might have missed
     
