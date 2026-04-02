@@ -16,12 +16,13 @@ class WebParser:
     '''
 
     CSS_EXCLUSIONS: str = '''
-    .infobox, .sinottico, .mw-editsection, .mw-references-wrap, .mw-references-columns, .noprint, .CdA, .mw-ref, .reference, .mw-empty-elt,
+    .infobox, .sinottico, .mw-editsection, .mw-references-wrap, .mw-references-columns, .noprint, .CdA, .mw-empty-elt,
     .hatnote, .avviso, .avviso-contenuto, .vedi-anche, .thumb, .mw-file-description, .mw-file-element, .navigation-not-searchable,
     .col-begin[role="presentation"], .unsortable, .flagicon, .noviewer, .itwiki-template-da-Aiuto-a-Wikipedia, .itwiki-template-approfondimento-intestazione,
     .itwiki-template-approfondimento, .itwiki-template-approfondimento-destra, .mw-collapsible, .mw-collapsed,
     .mw-made-collapsible, .box-Unreferenced_section, .ambox-Unreferenced, .gallery, .mw-gallery-traditional
-    '''
+    ''' # do we need .wikitable? (waiting on professor to answer, if yes, add to this list)
+    # NOTE: removed .mw-ref, .reference to improve parser performance
 
     TAG_EXCLUSIONS: list[str] = ['style', 'link', 'cite', 'script', 'noscript', 'figure', 'meta', 'img']
 
@@ -55,7 +56,7 @@ class WebParser:
     def __init__(self):
         self.browser_cfg : BrowserConfig = BrowserConfig(headless=True)
         self.crawler_cfg : CrawlerRunConfig = CrawlerRunConfig(target_elements = WebParser.TARGETS, excluded_tags=WebParser.TAG_EXCLUSIONS, 
-                                                               markdown_generator = DefaultMarkdownGenerator(PruningContentFilter(), options=WebParser.MARKDOWN_GEN_OPTIONS),
+                                                               markdown_generator = DefaultMarkdownGenerator(options=WebParser.MARKDOWN_GEN_OPTIONS),
                                                                excluded_selector = WebParser.CSS_EXCLUSIONS,
                                                                only_text = False, 
                                                                remove_forms = True, 
@@ -65,12 +66,13 @@ class WebParser:
 
     def __cleanup_and_get_tokens(self, md: str) -> str: # change back to list[str] when done testing
         '''Cleans up the markdown and returns cleaned markdown string'''
-        md = json.dumps(md) # escape markdown string for JSON (also adds double quotes at the beginning and end of the string, which will be removed in the final output)
         to_remove: list[str] = WebParser.MARKDOWN_EXCLUSIONS
         for elem in to_remove:
             index_found = md.find(elem)
             if (index_found != -1):
                 md = md[:index_found] # delete whatever follows since we have no need for it
+        md = json.dumps(md) # escape markdown string for JSON (also adds double quotes at the beginning and end of the string, which will be removed in the final output)
+        # TODO: remove double quotes added by json.dumps()
         return md
         
     async def parse_url(self, url: str) -> dict[str, str]:
@@ -82,15 +84,16 @@ class WebParser:
 
             success: bool = filtered_result.success
 
-            if (not success or filtered_result[0].markdown.fit_markdown == '\n'): # check for empty results or crawling errors (URL not reachable, etc.)
+            if (not success or filtered_result[0].markdown.raw_markdown == '\n'): # check for empty results or crawling errors (URL not reachable, etc.)
                 return {} # return empty dict on crawl failure
 
             soup = BeautifulSoup(filtered_result[0].html, 'html.parser')
             h1_elem = soup.find('h1', id='firstHeading')
             title: str = h1_elem.get_text(strip=True) if h1_elem else 'Unknown title'
 
-            page_markdown: str = f"# {title}\n" + filtered_result[0].markdown.fit_markdown # add title to extracted markdown
-            page_markdown = self.__cleanup_and_get_tokens(page_markdown) # change to raw_markdown if not using PruningContentFilter()
+            # investigating certain hyperlink words missing, PruningContentFilter() might be the cause (i.e. use raw_markdown)
+            page_markdown: str = f"# {title}\n" + filtered_result[0].markdown.raw_markdown # add title to extracted markdown
+            page_markdown = self.__cleanup_and_get_tokens(page_markdown) 
             body_length = len(page_markdown)
 
             if (WebParser.DEBUG):
