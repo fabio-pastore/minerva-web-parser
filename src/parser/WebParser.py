@@ -1,6 +1,7 @@
 from bs4 import BeautifulSoup
-from crawl4ai import AsyncWebCrawler, CrawlResult, CrawlerRunConfig, DefaultMarkdownGenerator, PruningContentFilter, CacheMode, BrowserConfig
+from crawl4ai import AsyncWebCrawler, CrawlResult, CrawlerRunConfig, DefaultMarkdownGenerator, CacheMode, BrowserConfig
 import json
+import regex as re
 
 class WebParser:
 
@@ -15,43 +16,56 @@ class WebParser:
             
     '''
 
-    CSS_EXCLUSIONS: str = '''
+    __CSS_EXCLUSIONS: str = '''
     .infobox, .sinottico, .mw-editsection, .mw-references-wrap, .mw-references-columns, .noprint, .CdA, .mw-empty-elt,
     .hatnote, .avviso, .avviso-contenuto, .vedi-anche, .thumb, .mw-file-description, .mw-file-element, .navigation-not-searchable,
     .col-begin[role="presentation"], .unsortable, .flagicon, .noviewer, .itwiki-template-da-Aiuto-a-Wikipedia, .itwiki-template-approfondimento-intestazione,
     .itwiki-template-approfondimento, .itwiki-template-approfondimento-destra, .mw-collapsible, .mw-collapsed,
-    .mw-made-collapsible, .box-Unreferenced_section, .ambox-Unreferenced, .gallery, .mw-gallery-traditional
+    .mw-made-collapsible, .box-Unreferenced_section, .ambox-Unreferenced, .gallery, .mw-gallery-traditional, .mw-indicator
     ''' # do we need .wikitable? (waiting on professor to answer, if yes, add to this list)
     # NOTE: removed .mw-ref, .reference to improve parser performance
 
-    TAG_EXCLUSIONS: list[str] = ['style', 'link', 'cite', 'script', 'noscript', 'figure', 'meta', 'img']
+    __TAG_EXCLUSIONS: list[str] = ['style', 'script', 'noscript', 'figure', 'meta', 'img']
+    # NOTE: removed 'link' and 'cite' since they are already handled during string cleanup and might lead to data loss during initial parsing
 
 
 
-    SUPPORTED_DOMAINS: list[str] = ['it.wikipedia.org']
-    GS_WEBPAGES: dict[str, list[str]] = {
+    __SUPPORTED_DOMAINS: list[str] = ['it.wikipedia.org']
+    __GS_WEBPAGES: dict[str, list[str]] = {
         'it.wikipedia.org': ['https://it.wikipedia.org/wiki/Among_Us']
     }
 
-    DEBUG: bool = True # print debug messages
+    __DEBUG: bool = True # print __DEBUG messages
 
-    CSS_EXCLUSIONS_OLD: str = '''
+    __CSS_EXCLUSIONS_OLD: str = '''
     #mw-head, #mw-panel, #footer, #vector-main-menu, .mw-content-subtitle,
     .vector-header-container, .vector-column-start, .shortdescription, 
     .vector-sticky-header, .mw-footer, .vector-sitenotice-container, 
     .reflist, .refbegin, .mw-references-wrap, .infobox, .mw-file-description,
     .thumb, .mw-editsection, .navbox, .side-box, .hatnote[role="complementary"], 
     .floatright, .infobox, .sinottico, .vector-appearance-landmark, .vector-column-start,
-    .mw-header, .vector-page-toolbar, .catlinks, .mw-references-wrap''' # add .wikitable if too much useless data is parsed. TODO: modify to include only Italian exclusions
+    .mw-header, .vector-page-toolbar, .catlinks, .mw-references-wrap'''
     
-    TAG_EXCLUSIONS_OLD: list[str] = ['nav', 'footer', 'aside', 'script', 'style', 'noscript', 'header', 'figure']
+    __TAG_EXCLUSIONS_OLD: list[str] = ['nav', 'footer', 'aside', 'script', 'style', 'noscript', 'header', 'figure']
 
 
-    TARGETS: list[str] = ['.mw-parser-output']
-    MARKDOWN_EXCLUSIONS: list[str] = ["## See also", "## Notes", "## References", "## External links", "## Voci correlate", "## Note", "## Bibliografia", "## Collegamenti esterni", "## Altri progetti"]
-    WORD_COUNT_THRESHOLD: int = 10
+    __TARGETS: list[str] = ['.mw-parser-output']
 
-    MARKDOWN_GEN_OPTIONS: dict[str, bool] = {
+    """
+    MARKDOWN_EXCLUSIONS: list[str] = ["## See also", "## Notes", "## References", "## External links", "## Voci correlate", 
+                                      "## Note", "## Bibliografia", "## Collegamenti esterni", "## Altri progetti", "## Pagine correlate", 
+                                      "## Strumenti"]
+
+    This only works for pages that actually put a single space after their double hashtags (and obviously pages can be found where the authors
+    were kind of enough to NOT use a single whitespace!). Regex below solves this issue.
+    """
+    
+    __MARKDOWN_REGEX = r"##\s+(?:See also|Notes|References|External links|Voci correlate|Note|Bibliografia|Collegamenti esterni|Altri progetti|Pagine correlate|Strumenti)" 
+    # this is necessary since apparently some pages contain an arbitrary number of whitespaces between "##" and "Notes, References, etc."
+
+    __WORD_COUNT_THRESHOLD: int = 10
+
+    __MARKDOWN_GEN_OPTIONS: dict[str, bool] = {
         'ignore_images': True, 
         'escape_html': True, 
         'ignore_links': True
@@ -59,26 +73,30 @@ class WebParser:
 
     def __init__(self):
         self.browser_cfg : BrowserConfig = BrowserConfig(headless=True)
-        self.crawler_cfg : CrawlerRunConfig = CrawlerRunConfig(target_elements = WebParser.TARGETS, excluded_tags=WebParser.TAG_EXCLUSIONS, 
-                                                               markdown_generator = DefaultMarkdownGenerator(options=WebParser.MARKDOWN_GEN_OPTIONS),
-                                                               excluded_selector = WebParser.CSS_EXCLUSIONS,
+        self.crawler_cfg : CrawlerRunConfig = CrawlerRunConfig(target_elements = WebParser.__TARGETS, excluded_tags=WebParser.__TAG_EXCLUSIONS, 
+                                                               markdown_generator = DefaultMarkdownGenerator(options=WebParser.__MARKDOWN_GEN_OPTIONS),
+                                                               excluded_selector = WebParser.__CSS_EXCLUSIONS,
                                                                only_text = False, 
                                                                remove_forms = True, 
                                                                remove_consent_popups = True, 
-                                                               word_count_threshold = WebParser.WORD_COUNT_THRESHOLD,
+                                                               word_count_threshold = WebParser.__WORD_COUNT_THRESHOLD,
                                                                cache_mode = CacheMode.BYPASS)
 
     def __cleanup(self, md: str) -> str: # change back to list[str] when done testing
         '''Cleans up the markdown and returns cleaned markdown string'''
-        to_remove: list[str] = WebParser.MARKDOWN_EXCLUSIONS
-        for elem in to_remove:
-            index_found = md.find(elem)
-            if (index_found != -1):
-                md = md[:index_found] # delete whatever follows since we have no need for it
-        md = json.dumps(md) # escape markdown string for JSON (also adds double quotes at the beginning and end of the string, which will be removed in the final output)
-        if len(md) < 2:
-            md = md[:1:-1] # remove double quotes from json.dumps()
+        re_match = re.search(WebParser.__MARKDOWN_REGEX, md, flags=re.IGNORECASE)
+        if (re_match):
+            index_match: int = re_match.start()
+            md = md[:index_match]
+        md = re.sub(r'\[[a-zA-Z0-9]+\]', ' ', md) # remove markdown unlinked notes
+        md = json.dumps(md, ensure_ascii=False) # escape markdown string for JSON (also adds double quotes at the beginning and end of the string, which will be removed in the final output)
+        if len(md) >= 2:
+            md = md[1:-1] # remove double quotes from json.dumps()
         return md
+    
+    @classmethod
+    def get_supported_domains(cls) -> list[str]:
+        return cls.__SUPPORTED_DOMAINS
         
     async def parse_url(self, url: str) -> dict[str, str]:
         """Crawls webpage and extracts content. If crawl fails an empty dictionary is returned."""
@@ -99,16 +117,16 @@ class WebParser:
             # investigating certain hyperlink words missing, PruningContentFilter() might be the cause (i.e. use raw_markdown)
             page_markdown: str = f"# {title}\n" + result.markdown.raw_markdown # add title to extracted markdown
             page_markdown = self.__cleanup(page_markdown)
-            page_markdown = page_markdown.encode('utf-8').decode('unicode_escape') #translate escape codes into accented chars 
+            # page_markdown = page_markdown.encode('utf-8').decode('unicode_escape')
             body_length = len(page_markdown)
 
-            if (WebParser.DEBUG):
+            if (WebParser.__DEBUG):
                 print(f"[WebParser]: Original HTML file length (in characters): {len(result.html)}")
 
-            if (WebParser.DEBUG):
+            if (WebParser.__DEBUG):
                 print(f"[WebParser] Successfully parsed article titled '{title}' for a total of {body_length} characters.")
-                if (not WebParser.MARKDOWN_GEN_OPTIONS.get("ignore_links")):
-                    print("[WebParser] [WARNING] Links are currently not being ignored! To change this behaviour, set 'ignore_links' in MARKDOWN_GEN_OPTIONS to True.")
+                if (not WebParser.__MARKDOWN_GEN_OPTIONS.get("ignore_links")):
+                    print("[WebParser] [WARNING] Links are currently not being ignored! To change this behaviour, set 'ignore_links' in __MARKDOWN_GEN_OPTIONS to True.")
 
             clean_html: str = result.cleaned_html # pure HTML (no scripts, no CSS)
             domain: str = url.split('/')[2]
