@@ -4,6 +4,11 @@
     <title>WebParser v-1.0</title>
     <style type="text/css">
 
+        body {
+            margin: 0px;
+            padding: 0px;
+        }
+
         .header-div {
             display: grid;
             grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); 
@@ -38,16 +43,42 @@
             border-right: 1px solid black;
         }
 
+        .loading-div {
+            position: fixed;
+            pointer-events: none;
+            top: 0;
+            left: 0; 
+            opacity: 0;
+            background-color: rgba(128, 128, 128, 0.65);
+            z-index: 1;
+            width: 100vw;
+            height: 100vh;
+            color: white;
+            align-content: center;
+        }
+
+        .appear {
+            opacity: 1;
+            transition: opacity 0.3s;
+            pointer-events: auto;
+        }
+
     </style>
 </head>
 <body>
-    <div style="max-width: fit-content; margin: auto; text-align: center; border: 1px solid black; min-width: 95vw; height: fit-content;">
+    <div id="ldiv" class="loading-div">
+        <div style="padding-top: 20px; padding-bottom: 20px; padding-left: 50px; padding-right: 50px; max-width: fit-content; margin: 0 auto 0 auto; max-height: fit-content; font-size: 13px; text-align: center; align-content: center; font-family: Arial, Helvetica, sans-serif; background-color: rgba(0, 0, 0, 1);">
+            <div style="font-size: 30px; margin: 0 auto 0 auto"><b>Loading...</b></div>
+            <b>This may take a while</b>
+        </div>
+    </div>
+    <div style="margin: 15px auto 0 auto; max-width: fit-content; text-align: center; border: 1px solid black; min-width: 95vw; height: fit-content">
         <h1 style="margin: 0px; padding: 0px;">WebParser v-1.0</h1>
         <h6 style="margin: 5px; font-weight: normal; font-size: 14px">Made by Alessandro, Fabio and Yihao</h6>
     </div>
     <br>
     <div style="max-width: fit-content; margin: auto;">
-        <form method="post" action="/parse_url_evaluate_perf">
+        <form method="post" action="/parse_url_evaluate_perf" onsubmit="display_loading_div()">
             <label>URL: </label>
             <input type="text" name="url" id='url_input' placeholder="https://" size="40" required>
 
@@ -66,20 +97,23 @@
     <div style="max-width: fit-content; margin: auto; font-size: 18px; text-align: center;">
         {% if tk_precision %}
         <b>Token level evaluation results:</b><br>
-        precision: <b>{{ tk_precision | round(3) }}</b>, recall: <b>{{ tk_recall | round(3) }}</b>, f1: <b>{{ tk_f1 | round(3) }}</b><br>
+        precision: <b>{{ tk_precision | round(3) }}</b>, recall: <b>{{ tk_recall | round(3) }}</b>, f1: <b>{{ tk_f1 | round(3) }}</b>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<i>(target: 1.0)</i><br>
         <br>
         <b>Length evaluation results:</b><br>
         Golden chars: <b>{{ l_golden_chars | round(3) }}</b>, Parsed chars: <b>{{ l_parsed_chars | round(3) }}</b>
         , Golden words: <b>{{ l_golden_words | round(3) }}</b>, Parsed words: <b>{{ l_parsed_words | round(3) }}</b>,
-        Char length ratio: <b>{{ l_char_length_ratio | round(3) }}</b>, Word length ratio: <b>{{ l_word_length_ratio | round(3) }}</b><br>
+        Char length ratio: <b>{{ l_char_length_ratio | round(3) }}</b>, Word length ratio: <b>{{ l_word_length_ratio | round(3) }}</b>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<i>(target: 1.0)</i><br>
         <br>
         <b>Rouge evaluation results:</b><br>
-        rouge1_f1: <b>{{ rouge1_f1 | round(3) }}</b>, rouge2_f1: <b>{{ rouge2_f1 | round(3) }}</b>, rougeL_f1: <b>{{ rougeL_f1 | round(3) }}</b><br>
+        rouge1_f1: <b>{{ rouge1_f1 | round(3) }}</b>, rouge2_f1: <b>{{ rouge2_f1 | round(3) }}</b>, rougeL_f1: <b>{{ rougeL_f1 | round(3) }}</b>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<i>(target: 1.0)</i><br>
         <br>
         <b>Bleu evaluation results:</b><br>
         bleu1: <b>{{ bleu1 | round(3) }}</b>, bleu2: <b>{{ bleu2 | round(3) }}</b>,
         bleu3: <b>{{ bleu3 | round(3) }}</b>, bleu4: <b>{{ bleu4 | round(3) }}</b>
-        bleu_avg: <b>{{ bleu_avg | round(3) }}</b>
+        bleu_avg: <b>{{ bleu_avg | round(3) }}</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<i>(target: 1.0)</i><br>
         <br>
         {% else %}
         <b>Token level evaluation results:</b><br>
@@ -116,7 +150,22 @@
 <script>
     const url_input = document.getElementById("url_input");
     const hidden_data = document.getElementById("hidden_j2_data");
-    if (hidden_data.dataset.requested_url !== '')
+    const load_div = document.getElementById("ldiv");
+    if (hidden_data.dataset.requested_url !== '') {
         url_input.value = hidden_data.dataset.requested_url;
+        // 1. Facciamo apparire il div istantaneamente (senza transizione) 
+        // per evitare il flash della pagina bianca/caricata
+        load_div.style.transition = "none";
+        load_div.classList.add("appear");
+
+        // 2. Usiamo un piccolo timeout per riattivare la transizione e sfumare
+        setTimeout(() => {
+            load_div.style.transition = "opacity 0.3s";
+            load_div.classList.remove("appear");
+        }, 50);
+    }
+    function display_loading_div() {
+        load_div.classList.add("appear");
+    }
 </script>
 </html>
