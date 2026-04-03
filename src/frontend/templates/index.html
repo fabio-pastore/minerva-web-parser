@@ -29,7 +29,9 @@
         .column {
             text-align: justify;
             font-size: 16px;
-            padding: 10px
+            padding: 10px;
+            overflow-wrap: break-word;
+            word-break: break-word;
         }
 
         .column:first-child {
@@ -39,7 +41,12 @@
     </style>
 </head>
 <body>
-    <div style="max-width: fit-content; margin: auto">
+    <div style="max-width: fit-content; margin: auto; text-align: center; border: 1px solid black; min-width: 95vw; height: fit-content;">
+        <h1 style="margin: 0px; padding: 0px;">WebParser v-1.0</h1>
+        <h6 style="margin: 5px; font-weight: normal; font-size: 14px">Made by Alessandro, Fabio and Yihao</h6>
+    </div>
+    <br>
+    <div style="max-width: fit-content; margin: auto;">
         <form method="post" action="/parse_url_evaluate_perf">
             <label>URL: </label>
             <input type="text" name="url" id='url_input' placeholder="https://" size="40" required>
@@ -56,10 +63,13 @@
         </form>
     </div>
     <br>
-    <div style="max-width: fit-content; margin: auto;">
+    <div style="max-width: fit-content; margin: auto; font-size: 18px; text-align: center;">
         {% if precision %}
         Token level evaluation results:<br>
         precision: <b>{{ precision | round(3) }}</b>, recall: <b>{{ recall | round(3) }}</b>, f1: <b>{{ f1 | round(3) }}</b>
+        {% else %}
+        Token level evaluation results:<br>
+        precision: N/A, recall: N/A, f1: N/A
         {% endif %}
     </div>
     <br>

@@ -4,7 +4,6 @@ import requests
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates") # check if this works 
-# NOTE: add debug strings
 
 API_BACKEND_URL = "http://backend:8003"
 
@@ -40,7 +39,7 @@ def get_gs_urls() -> list[str]:
     return gs_urls
 
 @app.get("/")
-def index(request: Request):
+def get_index(request: Request):
     return templates.TemplateResponse(name="index.html", request=request, context={"request": request, "gs_urls": get_gs_urls()})
 
 @app.post("/parse_url_evaluate_perf")
@@ -52,7 +51,7 @@ def parse_url_evaluate_perf(request: Request, url: str = Form(...)):
         raise HTTPException(status_code=503, detail=f"Failed to retrieve parsing of URL '{url}' from API server")
     html_text: str = data.get("html_text")
     parsed_text: str = data.get("parsed_text")
-    # cannot use get_data() in this case, since we must check if backend server returns HTTP status code 404 for gold  standard NOT FOUND
+    # cannot use get_data() in this case, since we must check if backend server returns HTTP status code 404 for gold standard NOT FOUND
     request_url = API_BACKEND_URL + f"/gold_standard/{url}"
     data = None
     gs_not_found: bool = False

@@ -45,7 +45,7 @@ async def parse_url(url: str = Path(...)) -> ParseOutput:
     print(f"[BACKEND-SERVER] Received parsing request for URL: {url}")
     domain_to_parse: str = url.split("/")[2]
     print(f"[BACKEND-SERVER] Extracted domain from URL: {domain_to_parse}")
-    if domain_to_parse not in WebParser.SUPPORTED_DOMAINS:
+    if domain_to_parse not in WebParser.get_supported_domains():
         raise HTTPException(status_code=400, detail="Domain not supported")
     parser : WebParser = WebParser()
     parse_output: dict[str, str] = await parser.parse_url(url)
@@ -57,12 +57,12 @@ async def parse_url(url: str = Path(...)) -> ParseOutput:
 # Endpoint to get the list of supported domains
 @app.get("/domains")
 def get_supported_domains() -> SupportedDomains:
-    return SupportedDomains(domains=WebParser.SUPPORTED_DOMAINS)
+    return SupportedDomains(domains=WebParser.get_supported_domains())
 
 @app.get("/gold_standard/{url:path}")
 def get_gold_standard(url: str = Path(...)) -> GSEntry:
     domain = url.split("/")[2]
-    if domain not in WebParser.SUPPORTED_DOMAINS:
+    if domain not in WebParser.get_supported_domains():
         raise HTTPException(status_code=400, detail="Domain not supported")
     file_path = f"gs_data/" + domain.replace(".", "_") + "_gs.json"     # not src/ anymore for docker
     if not os.path.exists(file_path):
@@ -78,7 +78,7 @@ def get_gold_standard(url: str = Path(...)) -> GSEntry:
 
 @app.get("/full_gold_standard/{domain}")
 def get_all_golden_standard_domain(domain: str) -> ListGSEntry:
-    if domain not in WebParser.SUPPORTED_DOMAINS:
+    if domain not in WebParser.get_supported_domains():
         raise HTTPException(status_code=400, detail="Domain not supported")
     file_path: str = "gs_data/" + domain.replace(".", "_") + "_gs.json" # same as above
     with open(file_path, mode='r', encoding='UTF-8') as fin:
@@ -112,7 +112,7 @@ def evaluate_parsing(eval_input: EvaluationInput) -> ParseEvaluation:
 
 @app.get("/full_gs_eval/{domain}")
 async def full_gs_eval(domain: str) -> ParseEvaluation:
-    if domain not in WebParser.SUPPORTED_DOMAINS:
+    if domain not in WebParser.get_supported_domains():
         raise HTTPException(status_code=400, detail="Domain not supported")
     
     evals: list[ParseEvaluation] = []
