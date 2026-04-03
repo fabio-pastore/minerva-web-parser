@@ -5,6 +5,7 @@ from fastapi import FastAPI, HTTPException, Path
 from src.parser.WebParser import WebParser
 import regex as re
 import string
+from rest.evaluation import *
 
 app = FastAPI()
 
@@ -32,13 +33,12 @@ class EvaluationInput(BaseModel):
     parsed_text: str
     gold_text: str
 
-class TokenLevelEval(BaseModel):
-    precision: float
-    recall: float
-    f1: float
-
 class ParseEvaluation(BaseModel):
     token_level_eval: TokenLevelEval
+    length_eval: LengthEval
+    rouge_eval: RougeEval
+    bleu_eval: BleuEval
+
 
 @app.get("/parse/{url:path}")
 async def parse_url(url: str = Path(...)) -> ParseOutput:
@@ -99,16 +99,12 @@ def get_tokens(raw_text: str) -> set[str]:
 def evaluate_parsing(eval_input: EvaluationInput) -> ParseEvaluation:
     parsed_text: str = eval_input.parsed_text
     gold_text: str = eval_input.gold_text
-    tokens_extracted: set[str] = get_tokens(parsed_text)
-    tokens_gs: set[str] = get_tokens(gold_text)
-    precision: float = len(tokens_extracted.intersection(tokens_gs)) / len(tokens_extracted)
-    recall: float = len(tokens_extracted.intersection(tokens_gs)) / len(tokens_gs)
-    f1: float = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0.0
-    print(tokens_extracted.difference(tokens_gs)) # uncomment to check which tokens were noise
-    print(tokens_gs.difference(tokens_extracted)) # uncomment to check which tokens were missed by the parser
-    return ParseEvaluation(token_level_eval=TokenLevelEval(precision=precision, recall=recall, f1=f1))
+    token_eval_res: TokenLevelEval = token_eval(gold_text, parsed_text)
+    length_eval_res: LengthEval = length_eval(gold_text, parsed_text)
+    rouge_eval_res: RougeEval = rouge_eval(gold_text, parsed_text)
+    bleu_eval_res: BleuEval = bleu_eval(gold_text, parsed_text)
+    return ParseEvaluation(token_level_eval=token_eval_res, length_eval= length_eval_res, rouge_eval= rouge_eval_res, bleu_eval= bleu_eval_res)
 
-# TODO: implement /full_gs_eval
 
 @app.get("/full_gs_eval/{domain}")
 async def full_gs_eval(domain: str) -> ParseEvaluation:
@@ -129,17 +125,42 @@ async def full_gs_eval(domain: str) -> ParseEvaluation:
 
         evals.append(evaluate_parsing(EvaluationInput(parsed_text=parsed_text, gold_text=gs.get(url))))
     
+    #extract and divide evals into types
     token_evals: list[TokenLevelEval] = [parse_eval.token_level_eval for parse_eval in evals]
+    length_evals: list[LengthEval] = [parse_eval.length_eval for parse_eval in evals]
+    rouge_evals: list[RougeEval] = [parse_eval.rouge_eval for parse_eval in evals]
+    bleu_evals: list[BleuEval] = [parse_eval.bleu_eval for parse_eval in evals]
 
-    precisions: list[float] = [teval.precision for teval in token_evals]
-    recalls: list[float] = [teval.recall for teval in token_evals]
-    f1s: list[float] = [teval.f1 for teval in token_evals]
+    #mean of token_evals
+    precisions: list[float] = [e.precision for e in token_evals]
+    recalls: list[float] = [e.recall for e in token_evals]
+    f1s: list[float] = [e.f1 for e in token_evals]
+    full_token_eval: TokenLevelEval = TokenLevelEval(precision= sum(precisions)/len(precisions), recall= sum(recalls)/len(recalls), f1 = sum(f1s)/len(f1s))
 
-    full_token_eval = TokenLevelEval(precision= sum(precisions)/len(precisions), recall= sum(recalls)/len(recalls), f1 = sum(f1s)/len(f1s))
+    #mean of lenth_evals
+    c_ratios: list[float] = [e.char_length_ratio for e in length_evals]
+    w_ratios: list[float] = [e.word_length_ratio for e in length_evals]
+    full_length_eval: LengthEval = LengthEval(golden_chars=None, parsed_chars=None, golden_words=None, parsed_words=None, char_length_ratio = sum(c_ratios)/len(c_ratios), word_length_ratio = sum(w_ratios)/len(w_ratios))
 
-    return ParseEvaluation(token_level_eval=full_token_eval)
+    #mean of rouge_evals
+    r1: list[float] = [e.rouge1_f1 for e in rouge_evals]
+    r2: list[float] = [e.rouge2_f1 for e in rouge_evals]
+    rL: list[float] = [e.rougeL_f1 for e in rouge_evals]
+    full_rouge_eval: RougeEval = RougeEval(rouge1_f1= sum(r1)/len(r1), rouge2_f1= sum(r2)/len(r2), rougeL_f1= sum(rL)/len(rL))
+
+    #mean of bleu_evals
+    b1: list[float] = [e.bleu1 for e in bleu_evals]
+    b2: list[float] = [e.bleu2 for e in bleu_evals]
+    b3: list[float] = [e.bleu3 for e in bleu_evals]
+    b4: list[float] = [e.bleu4 for e in bleu_evals]
+    bavg: list[float] = [e.bleu_avg for e in bleu_evals]
+    full_bleu_eval: BleuEval = BleuEval(bleu1= sum(b1)/len(b1), bleu2= sum(b2)/len(b2), bleu3= sum(b3)/len(b3), bleu4= sum(b4)/len(b4), bleu_avg= sum(bavg)/len(bavg))
+    
+
+    return ParseEvaluation(token_level_eval=full_token_eval, length_eval= full_length_eval, \
+                           rouge_eval= full_rouge_eval, bleu_eval= full_bleu_eval)
         
-
+#TODO: gs_eval that does it for a single webpage, so we can avoid calling /parse/ and copy paste into  /evaluate/
 
 
     
