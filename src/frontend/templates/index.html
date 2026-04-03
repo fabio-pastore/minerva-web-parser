@@ -153,12 +153,9 @@
     const load_div = document.getElementById("ldiv");
     if (hidden_data.dataset.requested_url !== '') {
         url_input.value = hidden_data.dataset.requested_url;
-        // 1. Facciamo apparire il div istantaneamente (senza transizione) 
-        // per evitare il flash della pagina bianca/caricata
         load_div.style.transition = "none";
         load_div.classList.add("appear");
 
-        // 2. Usiamo un piccolo timeout per riattivare la transizione e sfumare
         setTimeout(() => {
             load_div.style.transition = "opacity 0.3s";
             load_div.classList.remove("appear");
