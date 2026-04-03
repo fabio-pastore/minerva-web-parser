@@ -87,7 +87,8 @@ def get_all_golden_standard_domain(domain: str) -> ListGSEntry:
 
 def get_tokens(raw_text: str) -> set[str]:
     punctuation_remover: dict[int, int | None] = str.maketrans({char: ' ' for char in string.punctuation})
-    raw_text = re.sub(r'\[[a-zA-Z0-9]+\]', ' ', raw_text) # remove any residual markdown citation tags (e.g. [1], [note1], ...) 
+    raw_text = re.sub(r'\[[a-zA-Z0-9]+\]', ' ', raw_text) # remove any residual markdown citation tags (e.g. [1], [note1], ...)
+    raw_text = re.sub(r'\\n|\\r', ' ', raw_text) 
     raw_text: str = raw_text.translate(punctuation_remover) # essential to transform words like well-being -> wellbeing
     raw_text = re.sub(r'[^\w\s]', ' ', raw_text) # remove symbols like —, •, → that string.punctuation might have missed
     

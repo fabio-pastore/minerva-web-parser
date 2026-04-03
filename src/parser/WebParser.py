@@ -1,5 +1,5 @@
 from bs4 import BeautifulSoup
-from crawl4ai import AsyncWebCrawler, CrawlResult, CrawlerRunConfig, DefaultMarkdownGenerator, PruningContentFilter, CacheMode, BrowserConfig
+from crawl4ai import AsyncWebCrawler, CrawlResult, CrawlerRunConfig, DefaultMarkdownGenerator, CacheMode, BrowserConfig
 import json
 import regex as re
 
@@ -21,11 +21,12 @@ class WebParser:
     .hatnote, .avviso, .avviso-contenuto, .vedi-anche, .thumb, .mw-file-description, .mw-file-element, .navigation-not-searchable,
     .col-begin[role="presentation"], .unsortable, .flagicon, .noviewer, .itwiki-template-da-Aiuto-a-Wikipedia, .itwiki-template-approfondimento-intestazione,
     .itwiki-template-approfondimento, .itwiki-template-approfondimento-destra, .mw-collapsible, .mw-collapsed,
-    .mw-made-collapsible, .box-Unreferenced_section, .ambox-Unreferenced, .gallery, .mw-gallery-traditional
+    .mw-made-collapsible, .box-Unreferenced_section, .ambox-Unreferenced, .gallery, .mw-gallery-traditional, .mw-indicator
     ''' # do we need .wikitable? (waiting on professor to answer, if yes, add to this list)
     # NOTE: removed .mw-ref, .reference to improve parser performance
 
-    TAG_EXCLUSIONS: list[str] = ['style', 'link', 'cite', 'script', 'noscript', 'figure', 'meta', 'img']
+    TAG_EXCLUSIONS: list[str] = ['style', 'script', 'noscript', 'figure', 'meta', 'img']
+    # NOTE: removed 'link' and 'cite' since they are already handled during string cleanup and might lead to data loss during initial parsing
 
 
 
@@ -56,7 +57,7 @@ class WebParser:
                                       "## Strumenti"]
 
     This only works for pages that actually put a single space after their double hashtags (and obviously pages can be found where the authors
-    were kind of enough to leave this gift for us!). Regex below solves this issue.
+    were kind of enough to NOT use a single whitespace!). Regex below solves this issue.
     """
     
     MARKDOWN_REGEX = r"##\s+(?:See also|Notes|References|External links|Voci correlate|Note|Bibliografia|Collegamenti esterni|Altri progetti|Pagine correlate|Strumenti)" 
