@@ -80,10 +80,37 @@ def parse_url_evaluate_perf(request: Request, url: str = Form(...)):
             raise HTTPException(status_code=503, detail=f"Failed to retrieve parse evaluation from API server")
         
         token_eval : dict[str, float] = data.get("token_level_eval")
-        precision: float = token_eval.get("precision")
-        recall: float = token_eval.get("recall")
-        f1: float = token_eval.get("f1")
-        context_dict.update({"precision": precision, "recall": recall, "f1": f1})
+        length_eval : dict[str, float|int] = data.get("length_eval")
+        rouge_eval : dict[str, float] = data.get("rouge_eval")
+        bleu_eval : dict[str, float] = data.get("bleu_eval")
+
+        evaluation_info: dict[str, float|int] = {
+
+            # token_level_eval
+            "tk_precision": token_eval.get("precision"), 
+            "tk_recall": token_eval.get("recall"), 
+            "tk_f1": token_eval.get("f1"),
+            # length_ratio_eval
+            "l_golden_chars": length_eval.get("golden_chars"), 
+            "l_parsed_chars": length_eval.get("parsed_chars"), 
+            "l_golden_words": length_eval.get("golden_words"),
+            "l_parsed_words": length_eval.get("parsed_words"), 
+            "l_char_length_ratio": length_eval.get("char_length_ratio"),
+            "l_word_length_ratio": length_eval.get("word_length_ratio"),
+            # rouge_eval
+            "rouge1_f1": rouge_eval.get("rouge1_f1"),
+            "rouge2_f1": rouge_eval.get("rouge2_f1"),
+            "rougeL_f1": rouge_eval.get("rougeL_f1"),
+            # bleu_eval
+            "bleu1": bleu_eval.get("bleu1"),
+            "bleu2": bleu_eval.get("bleu2"),
+            "bleu3": bleu_eval.get("bleu3"),
+            "bleu4": bleu_eval.get("bleu4"),
+            "bleu_avg": bleu_eval.get("bleu_avg")
+            
+        }
+
+        context_dict.update(evaluation_info)
 
     return templates.TemplateResponse(name="index.html", request=request, context=context_dict)
 

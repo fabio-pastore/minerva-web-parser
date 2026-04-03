@@ -3,8 +3,6 @@ import json
 from pydantic import BaseModel
 from fastapi import FastAPI, HTTPException, Path
 from src.parser.WebParser import WebParser
-import regex as re
-import string
 from rest.evaluation import *
 
 app = FastAPI()

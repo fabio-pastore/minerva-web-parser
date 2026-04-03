@@ -64,12 +64,35 @@
     </div>
     <br>
     <div style="max-width: fit-content; margin: auto; font-size: 18px; text-align: center;">
-        {% if precision %}
-        Token level evaluation results:<br>
-        precision: <b>{{ precision | round(3) }}</b>, recall: <b>{{ recall | round(3) }}</b>, f1: <b>{{ f1 | round(3) }}</b>
+        {% if tk_precision %}
+        <b>Token level evaluation results:</b><br>
+        precision: <b>{{ tk_precision | round(3) }}</b>, recall: <b>{{ tk_recall | round(3) }}</b>, f1: <b>{{ tk_f1 | round(3) }}</b><br>
+        <br>
+        <b>Length evaluation results:</b><br>
+        Golden chars: <b>{{ l_golden_chars | round(3) }}</b>, Parsed chars: <b>{{ l_parsed_chars | round(3) }}</b>
+        , Golden words: <b>{{ l_golden_words | round(3) }}</b>, Parsed words: <b>{{ l_parsed_words | round(3) }}</b>,
+        Char length ratio: <b>{{ l_char_length_ratio | round(3) }}</b>, Word length ratio: <b>{{ l_word_length_ratio | round(3) }}</b><br>
+        <br>
+        <b>Rouge evaluation results:</b><br>
+        rouge1_f1: <b>{{ rouge1_f1 | round(3) }}</b>, rouge2_f1: <b>{{ rouge2_f1 | round(3) }}</b>, rougeL_f1: <b>{{ rougeL_f1 | round(3) }}</b><br>
+        <br>
+        <b>Bleu evaluation results:</b><br>
+        bleu1: <b>{{ bleu1 | round(3) }}</b>, bleu2: <b>{{ bleu2 | round(3) }}</b>,
+        bleu3: <b>{{ bleu3 | round(3) }}</b>, bleu4: <b>{{ bleu4 | round(3) }}</b>
+        bleu_avg: <b>{{ bleu_avg | round(3) }}</b>
+        <br>
         {% else %}
-        Token level evaluation results:<br>
-        precision: N/A, recall: N/A, f1: N/A
+        <b>Token level evaluation results:</b><br>
+        N/A<br>
+        <br>
+        <b>Length evaluation results:</b><br>
+        N/A<br>
+        <br>
+        <b>Rouge evaluation results:</b><br>
+        N/A<br>
+        <br>
+        <b>Bleu evaluation results:</b><br>
+        N/A<br>
         {% endif %}
     </div>
     <br>

@@ -4,6 +4,8 @@ import regex as re
 from typing import Sequence, Optional
 import math
 
+ROUGE_L_CAP = 8192 # good tradeoff between precision and execution time
+
 # ---------------------------------------------------------------------------
 # Data classes
 # ---------------------------------------------------------------------------
@@ -88,8 +90,8 @@ def length_eval(gold: str, parsed: str) -> LengthEval:
 # ROUGE - industry standard for text extraction quality
 # ---------------------------------------------------------------------------
 def _lcs_length(x: Sequence, y: Sequence) -> int:
-    '''Classic Dynamic Programming LCS (Longest Common Sequence) - O(m*n) but capped to keep it fast.'''
-    m, n = min(len(x), 512), min(len(y), 512)
+    '''Classic Dynamic Programming LCS (Longest Common Sequence)'''
+    m, n = min(len(x), ROUGE_L_CAP), min(len(y), ROUGE_L_CAP)  # NOTE: this test is computationally intensive O(n^2), so we cap the length of analyzed portion of parsed text to an arbitrary value
     x, y = x[:m], y[:n]
     prev = [0] * (n + 1)
     for i in range(m):
@@ -114,8 +116,8 @@ def _rouge_f1(ref_toks: list[str], hyp_toks: list[str], n: int) -> float:
         lcs = _lcs_length(ref_toks, hyp_toks)
         if not ref_toks or not hyp_toks:
             return 0.0
-        prec = lcs / len(hyp_toks)
-        rec  = lcs / len(ref_toks)
+        prec = lcs / min(len(hyp_toks), ROUGE_L_CAP)
+        rec  = lcs / min(len(ref_toks), ROUGE_L_CAP)
         return 2 * prec * rec / (prec + rec) if (prec + rec) else 0.0
     ref_ng  = _ngram_counts(ref_toks, n)
     hyp_ng  = _ngram_counts(hyp_toks, n)
