@@ -130,7 +130,7 @@ async def full_gs_eval(domain: str) -> ParseEvaluation:
     #mean of lenth_evals
     c_ratios: list[float] = [e.char_length_ratio for e in length_evals]
     w_ratios: list[float] = [e.word_length_ratio for e in length_evals]
-    full_length_eval: LengthEval = LengthEval(char_length_ratio = sum(c_ratios)/len(c_ratios), word_length_ratio = sum(w_ratios)/len(w_ratios))
+    full_length_eval: LengthEval = LengthEval(golden_chars=None, parsed_chars=None, golden_words=None, parsed_words=None, char_length_ratio = sum(c_ratios)/len(c_ratios), word_length_ratio = sum(w_ratios)/len(w_ratios))
 
     #mean of rouge_evals
     r1: list[float] = [e.rouge1_f1 for e in rouge_evals]
