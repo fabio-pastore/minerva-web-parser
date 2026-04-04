@@ -22,7 +22,7 @@ class WebParser:
     .col-begin[role="presentation"], .unsortable, .flagicon, .noviewer, .itwiki-template-da-Aiuto-a-Wikipedia, .itwiki-template-approfondimento-intestazione,
     .itwiki-template-approfondimento, .itwiki-template-approfondimento-destra, .mw-collapsible, .mw-collapsed,
     .mw-made-collapsible, .box-Unreferenced_section, .ambox-Unreferenced, .gallery, .mw-gallery-traditional, .mw-indicator
-    ''' # do we need .wikitable? (waiting on professor to answer, if yes, add to this list)
+    '''
     # NOTE: removed .mw-ref, .reference to improve parser performance
 
     __TAG_EXCLUSIONS: list[str] = ['style', 'script', 'noscript', 'figure', 'meta', 'img']
@@ -68,7 +68,7 @@ class WebParser:
     __MARKDOWN_GEN_OPTIONS: dict[str, bool] = {
         'ignore_images': True, 
         'escape_html': True, 
-        'ignore_links': True
+        'ignore_links': False # we must include links in .md
     }
 
     def __init__(self):
@@ -88,10 +88,9 @@ class WebParser:
         if (re_match):
             index_match: int = re_match.start()
             md = md[:index_match]
-        md = re.sub(r'\[[a-zA-Z0-9]+\]', ' ', md) # remove markdown unlinked notes
         md = json.dumps(md, ensure_ascii=False) # escape markdown string for JSON (also adds double quotes at the beginning and end of the string, which will be removed in the final output)
         if len(md) >= 2:
-            md = md[1:-1] # remove double quotes from json.dumps()
+          md = md[1:-1] # remove double quotes from json.dumps()
         return md
     
     @classmethod
@@ -114,10 +113,8 @@ class WebParser:
             h1_elem = soup.find('h1', id='firstHeading')
             title: str = h1_elem.get_text(strip=True) if h1_elem else 'Unknown title'
 
-            # investigating certain hyperlink words missing, PruningContentFilter() might be the cause (i.e. use raw_markdown)
             page_markdown: str = f"# {title}\n" + result.markdown.raw_markdown # add title to extracted markdown
             page_markdown = self.__cleanup(page_markdown)
-            # page_markdown = page_markdown.encode('utf-8').decode('unicode_escape')
             body_length = len(page_markdown)
 
             if (WebParser.__DEBUG):
@@ -128,15 +125,15 @@ class WebParser:
                 if (not WebParser.__MARKDOWN_GEN_OPTIONS.get("ignore_links")):
                     print("[WebParser] [WARNING] Links are currently not being ignored! To change this behaviour, set 'ignore_links' in __MARKDOWN_GEN_OPTIONS to True.")
 
-            clean_html: str = result.cleaned_html # pure HTML (no scripts, no CSS)
+            raw_html: str = result.html # original page HTML content
             domain: str = url.split('/')[2]
 
             ret: dict[str, str] = {
                 "url": url,
                 "domain": domain,
                 "title": title,
-                "html_text": clean_html,
-                "parsed_text": page_markdown # QUESTION: do we also want links? 
+                "html_text": raw_html,
+                "parsed_text": page_markdown
             }
 
             return ret

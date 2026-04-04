@@ -40,9 +40,11 @@ class BleuEval(BaseModel):
 # ---------------------------------------------------------------------------
 def get_tokens(raw_text: str) -> set[str]:
     punctuation_remover: dict[int, int | None] = str.maketrans({char: ' ' for char in string.punctuation})
-    raw_text = re.sub(r'\[[a-zA-Z0-9]+\]', ' ', raw_text) # remove any residual markdown citation tags (e.g. [1], [note1], ...)
-    raw_text = re.sub(r'\\n|\\r', ' ', raw_text) 
-    raw_text: str = raw_text.translate(punctuation_remover) # essential to transform words like well-being -> wellbeing
+    raw_text = re.sub(r'\[\[[[0-9]+\]\]', ' ', raw_text) # remove markdown unlinked notes
+    raw_text = re.sub(r'(\[[^\]]*\])\(\s*https?://(?:[^()]|\([^()]*\))*\)', r'\1', raw_text) # remove json dumped hypertext links
+    raw_text = re.sub(r'\(\s*https?://(?:[^()]|\([^()]*\))*\)', ' ', raw_text) # remove json dumped cite note links
+    raw_text = re.sub(r'\\n|\\r', ' ', raw_text) # for GS input 
+    raw_text: str = raw_text.translate(punctuation_remover) # removes punctuation
     raw_text = re.sub(r'[^\w\s]', ' ', raw_text) # remove symbols like —, •, → that string.punctuation might have missed
     
     tokens: set[str] = set(raw_text.strip().lower().split())
@@ -50,9 +52,11 @@ def get_tokens(raw_text: str) -> set[str]:
 
 def get_tokens_list(raw_text: str) -> list[str]:
     punctuation_remover: dict[int, int | None] = str.maketrans({char: ' ' for char in string.punctuation})
-    raw_text = re.sub(r'\[[a-zA-Z0-9]+\]', ' ', raw_text) # remove any residual markdown citation tags (e.g. [1], [note1], ...)
-    raw_text = re.sub(r'\\n|\\r', ' ', raw_text) 
-    raw_text: str = raw_text.translate(punctuation_remover) # essential to transform words like well-being -> wellbeing
+    raw_text = re.sub(r'\[\[[0-9]+\]\]', ' ', raw_text) # remove markdown unlinked notes
+    raw_text = re.sub(r'(\[[^\]]*\])\(\s*https?://(?:[^()]|\([^()]*\))*\)', r'\1', raw_text) # remove hypertext links
+    raw_text = re.sub(r'\(\s*https?://(?:[^()]|\([^()]*\))*\)', ' ', raw_text) # remove cite note links
+    raw_text = re.sub(r'\\n|\\r', ' ', raw_text) # for GS input
+    raw_text: str = raw_text.translate(punctuation_remover) # removes punctuation
     raw_text = re.sub(r'[^\w\s]', ' ', raw_text) # remove symbols like —, •, → that string.punctuation might have missed
     
     tokens: list[str] = raw_text.strip().lower().split()
