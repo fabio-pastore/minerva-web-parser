@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, Form, HTTPException
+from fastapi import FastAPI, Request, Form
 from fastapi.templating import Jinja2Templates
 from starlette.templating import _TemplateResponse # used for type hinting in report_error()
 import requests

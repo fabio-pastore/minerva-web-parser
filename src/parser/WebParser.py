@@ -1,86 +1,32 @@
 from bs4 import BeautifulSoup
-from crawl4ai import AsyncWebCrawler, CrawlResult, CrawlerRunConfig, DefaultMarkdownGenerator, CacheMode, BrowserConfig
+from crawl4ai import AsyncWebCrawler, CrawlResult, CrawlerRunConfig, CacheMode, BrowserConfig, markdown_generation_strategy
 import json
 import regex as re
+from abc import ABC, abstractmethod
 
-class WebParser:
-
-    '''
-    webpages: 
-    https://it.wikipedia.org/wiki/Among_Us
-    https://it.wikipedia.org/wiki/YouTube
-    https://it.wikipedia.org/wiki/Stati_del_mondo
-    https://it.wikipedia.org/wiki/1860      NOTE: doesn't parse the calendar at the bottom of the page for some reason
-    https://it.wikipedia.org/wiki/Aiuto:Wikilink
-    https://it.wikipedia.org/wiki/San_Marino    NOTE: very long, hard to get GS
-            
-    '''
-
-    __CSS_EXCLUSIONS: str = '''
-    .infobox, .sinottico, .mw-editsection, .mw-references-wrap, .mw-references-columns, .noprint, .CdA, .mw-empty-elt,
-    .hatnote, .avviso, .avviso-contenuto, .vedi-anche, .thumb, .mw-file-description, .mw-file-element, .navigation-not-searchable,
-    .col-begin[role="presentation"], .unsortable, .flagicon, .noviewer, .itwiki-template-da-Aiuto-a-Wikipedia, .itwiki-template-approfondimento-intestazione,
-    .itwiki-template-approfondimento, .itwiki-template-approfondimento-destra, .mw-collapsible, .mw-collapsed,
-    .mw-made-collapsible, .box-Unreferenced_section, .ambox-Unreferenced, .gallery, .mw-gallery-traditional, .mw-indicator
-    '''
-    # NOTE: removed .mw-ref, .reference to improve parser performance
-
-    __TAG_EXCLUSIONS: list[str] = ['style', 'script', 'noscript', 'figure', 'meta', 'img']
-    # NOTE: removed 'link' and 'cite' since they are already handled during string cleanup and might lead to data loss during initial parsing
-
-
-
-    __SUPPORTED_DOMAINS: list[str] = ['it.wikipedia.org']
-    __GS_WEBPAGES: dict[str, list[str]] = {
-        'it.wikipedia.org': ['https://it.wikipedia.org/wiki/Among_Us']
-    }
+class WebParser(ABC):
 
     __DEBUG: bool = True # print __DEBUG messages
-
-    __CSS_EXCLUSIONS_OLD: str = '''
-    #mw-head, #mw-panel, #footer, #vector-main-menu, .mw-content-subtitle,
-    .vector-header-container, .vector-column-start, .shortdescription, 
-    .vector-sticky-header, .mw-footer, .vector-sitenotice-container, 
-    .reflist, .refbegin, .mw-references-wrap, .infobox, .mw-file-description,
-    .thumb, .mw-editsection, .navbox, .side-box, .hatnote[role="complementary"], 
-    .floatright, .infobox, .sinottico, .vector-appearance-landmark, .vector-column-start,
-    .mw-header, .vector-page-toolbar, .catlinks, .mw-references-wrap'''
-    
-    __TAG_EXCLUSIONS_OLD: list[str] = ['nav', 'footer', 'aside', 'script', 'style', 'noscript', 'header', 'figure']
-
-
-    __TARGETS: list[str] = ['.mw-parser-output']
-
-    """
-    MARKDOWN_EXCLUSIONS: list[str] = ["## See also", "## Notes", "## References", "## External links", "## Voci correlate", 
-                                      "## Note", "## Bibliografia", "## Collegamenti esterni", "## Altri progetti", "## Pagine correlate", 
-                                      "## Strumenti"]
-
-    This only works for pages that actually put a single space after their double hashtags (and obviously pages can be found where the authors
-    were kind of enough to NOT use a single whitespace!). Regex below solves this issue.
-    """
-    
+    __SUPPORTED_DOMAINS: set[str] | None = None
+    __WORD_COUNT_THRESHOLD: int = 10
     __MARKDOWN_REGEX = r"##\s+(?:See also|Notes|References|External links|Voci correlate|Note|Bibliografia|Collegamenti esterni|Altri progetti|Pagine correlate|Strumenti)" 
     # this is necessary since apparently some pages contain an arbitrary number of whitespaces between "##" and "Notes, References, etc."
-
-    __WORD_COUNT_THRESHOLD: int = 10
-
-    __MARKDOWN_GEN_OPTIONS: dict[str, bool] = {
-        'ignore_images': True, 
-        'escape_html': True, 
-        'ignore_links': False # we must include links in .md
-    }
-
-    def __init__(self):
-        self.browser_cfg : BrowserConfig = BrowserConfig(headless=True)
-        self.crawler_cfg : CrawlerRunConfig = CrawlerRunConfig(target_elements = WebParser.__TARGETS, excluded_tags=WebParser.__TAG_EXCLUSIONS, 
-                                                               markdown_generator = DefaultMarkdownGenerator(options=WebParser.__MARKDOWN_GEN_OPTIONS),
-                                                               excluded_selector = WebParser.__CSS_EXCLUSIONS,
-                                                               only_text = False, 
-                                                               remove_forms = True, 
-                                                               remove_consent_popups = True, 
-                                                               word_count_threshold = WebParser.__WORD_COUNT_THRESHOLD,
-                                                               cache_mode = CacheMode.BYPASS)
+    
+    @abstractmethod
+    def __init__(self, targets: list[str], tag_excl: list[str], md_gen: markdown_generation_strategy.MarkdownGenerationStrategy, md_gen_opt: dict[str, bool], css_excl: str):
+        self.browser_cfg : BrowserConfig = BrowserConfig(headless = True)
+        self.md_gen_opt = md_gen_opt
+        self.crawler_cfg : CrawlerRunConfig = CrawlerRunConfig (
+            target_elements = targets,    
+            excluded_tags = tag_excl, 
+            markdown_generator = md_gen,
+            excluded_selector = css_excl,
+            only_text = False, 
+            remove_forms = True, 
+            remove_consent_popups = True, 
+            word_count_threshold = WebParser.__WORD_COUNT_THRESHOLD,
+            cache_mode = CacheMode.BYPASS
+        )
 
     def __cleanup(self, md: str) -> str:
         '''Cleans up the markdown and returns cleaned markdown string'''
@@ -94,7 +40,15 @@ class WebParser:
         return md
     
     @classmethod
-    def get_supported_domains(cls) -> list[str]:
+    def __import_supported_domains(cls) -> None:
+        """Imports domains.json file and assigns its contents to WebParser.__SUPPORTED_DOMAINS"""
+        with open("domains.json", mode='r', encoding='UTF-8') as fin:
+            cls.__SUPPORTED_DOMAINS = json.load(fin).get("domains")
+    
+    @classmethod
+    def get_supported_domains(cls) -> set[str]:
+        if not cls.__SUPPORTED_DOMAINS:
+            cls.__import_supported_domains()
         return cls.__SUPPORTED_DOMAINS
         
     async def parse_url(self, url: str) -> dict[str, str]:
@@ -120,12 +74,12 @@ class WebParser:
             body_length = len(page_markdown)
 
             if (WebParser.__DEBUG):
-                print(f"[WebParser]: Original HTML file length (in characters): {len(result.html)}")
+                print(f"[WebParser] Original HTML file length (in characters): {len(result.html)}")
 
             if (WebParser.__DEBUG):
                 print(f"[WebParser] Successfully parsed article titled '{title}' for a total of {body_length} characters.")
-                if (WebParser.__MARKDOWN_GEN_OPTIONS.get("ignore_links")):
-                    print("[WebParser] [WARNING] Links are currently being ignored! To change this behaviour, set 'ignore_links' in MARKDOWN_GEN_OPTIONS to False.")
+                if (self.md_gen_opt.get("ignore_links")):
+                    print("[WebParser] | [WARNING] Links are currently being ignored! To change this behaviour, set 'ignore_links' in MARKDOWN_GEN_OPTIONS to False.")
 
             raw_html: str = result.html # original page HTML content
             domain: str = url.split('/')[2]
