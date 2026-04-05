@@ -75,12 +75,12 @@
     <div style="margin: 15px auto 0 auto; max-width: fit-content; text-align: center; border: 1px solid black; min-width: 95vw; height: fit-content">
         <h1 style="margin: 0px; padding: 0px;">WebParser v-1.0</h1>
         <h6 style="margin: 5px; font-weight: normal; font-size: 14px">Made by Alessandro, Fabio and Yihao</h6>
-    </div>
+    </div><br>
     <br>
-    <div style="max-width: fit-content; margin: auto;">
-        <form method="post" action="/parse_url_evaluate_perf" onsubmit="display_loading_div()">
+    <div style="width: 100%; text-align: center; margin: auto;">
+        <form id="formid" method="post" action="/parse_url_evaluate_perf" onsubmit="display_loading_div()">
             <label>URL: </label>
-            <input type="text" name="url" id='url_input' placeholder="https://" size="40" required>
+            <input type="text" name="url" id='url_input' placeholder="https://mydomain.org/webpage" size="40" required>
 
             <label>Select GS</label>
             <select name="url_select" onchange="document.querySelector('input[name=url]').value = this.value">
@@ -90,8 +90,12 @@
                 {% endfor %}
             </select>
 
-            <button type="submit">Parse</button>
+            <button type="submit">Parse</button><br>
+            <br>
         </form>
+        <div style="width: 100%; text-align: center;">
+            <span id="err_span" style="display: none; color: red; font-size: 14px"><b>[ERROR] {{error if error else ''}}</b></span>  
+        </div>
     </div>
     <br>
     <div style="max-width: fit-content; margin: auto; font-size: 18px; text-align: center;">
@@ -104,7 +108,9 @@
         Golden chars: <b>{{ l_golden_chars | round(3) }}</b>, Parsed chars: <b>{{ l_parsed_chars | round(3) }}</b>
         , Golden words: <b>{{ l_golden_words | round(3) }}</b>, Parsed words: <b>{{ l_parsed_words | round(3) }}</b>,
         Char length ratio: <b>{{ l_char_length_ratio | round(3) }}</b>, Word length ratio: <b>{{ l_word_length_ratio | round(3) }}</b>
-        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<i>(target: 1.0)</i><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<i>(WLR target: 1.0)</i><br>
+        <br>
+        <b><u>NOTE</u>:</b> <i>CLR > 1.0</i> is expected since we are including links in the markdown output.<br>
         <br>
         <b>Rouge evaluation results:</b><br>
         rouge1_f1: <b>{{ rouge1_f1 | round(3) }}</b>, rouge2_f1: <b>{{ rouge2_f1 | round(3) }}</b>, rougeL_f1: <b>{{ rougeL_f1 | round(3) }}</b>
@@ -144,24 +150,37 @@
     </div>
     <br>
     <div id="hidden_j2_data" style="display: none;" 
-         data-requested_url = "{{ requested_url }}">
+         data-requested_url = "{{ requested_url }}"
+         data-err = "{{ error }}"
+         >
     </div>
 </body>
 <script>
+    const URL_REGEX = /^https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?& \/=]*)$/;
     const url_input = document.getElementById("url_input");
     const hidden_data = document.getElementById("hidden_j2_data");
     const load_div = document.getElementById("ldiv");
+    const err_span = document.getElementById("err_span");
     if (hidden_data.dataset.requested_url !== '') {
         url_input.value = hidden_data.dataset.requested_url;
         load_div.style.transition = "none";
         load_div.classList.add("appear");
+        err_span.style.display = 'inline'; 
+        err_span.style.color = 'green';
+        err_span.innerHTML = "<b>[INFO] OK (200)</b>";
 
         setTimeout(() => {
             load_div.style.transition = "opacity 0.3s";
             load_div.classList.remove("appear");
         }, 50);
     }
+
+    if (hidden_data.dataset.err !== '') {
+        err_span.style.display = 'inline';
+    }
+
     function display_loading_div() {
+        err_span.style.display = 'none'; // hide error message 
         load_div.classList.add("appear");
     }
 </script>

@@ -82,7 +82,7 @@ class WebParser:
                                                                word_count_threshold = WebParser.__WORD_COUNT_THRESHOLD,
                                                                cache_mode = CacheMode.BYPASS)
 
-    def __cleanup(self, md: str) -> str: # change back to list[str] when done testing
+    def __cleanup(self, md: str) -> str:
         '''Cleans up the markdown and returns cleaned markdown string'''
         re_match = re.search(WebParser.__MARKDOWN_REGEX, md, flags=re.IGNORECASE)
         if (re_match):
@@ -101,6 +101,8 @@ class WebParser:
         """Crawls webpage and extracts content. If crawl fails an empty dictionary is returned."""
         async with AsyncWebCrawler(config=self.browser_cfg) as crawler:
         # Run the crawler on a URL
+            if (url.count("/") < 3): # check for invalid URL "https://domain/page" is the bare minimum (so we need at least three slashes) 
+                return {}
                                         
             result : CrawlResult = await crawler.arun(url, config = self.crawler_cfg)
 
@@ -122,8 +124,8 @@ class WebParser:
 
             if (WebParser.__DEBUG):
                 print(f"[WebParser] Successfully parsed article titled '{title}' for a total of {body_length} characters.")
-                if (not WebParser.__MARKDOWN_GEN_OPTIONS.get("ignore_links")):
-                    print("[WebParser] [WARNING] Links are currently not being ignored! To change this behaviour, set 'ignore_links' in __MARKDOWN_GEN_OPTIONS to True.")
+                if (WebParser.__MARKDOWN_GEN_OPTIONS.get("ignore_links")):
+                    print("[WebParser] [WARNING] Links are currently being ignored! To change this behaviour, set 'ignore_links' in MARKDOWN_GEN_OPTIONS to False.")
 
             raw_html: str = result.html # original page HTML content
             domain: str = url.split('/')[2]

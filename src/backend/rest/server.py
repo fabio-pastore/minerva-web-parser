@@ -5,6 +5,8 @@ from fastapi import FastAPI, HTTPException, Path
 from src.parser.WebParser import WebParser
 from rest.evaluation import *
 
+URL_REGEX: str = "^https?:\\/\\/(?:www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b(?:[-a-zA-Z0-9()@:%_\\+.~#?&\\/=]*)$"
+
 app = FastAPI()
 
 class ParseOutput(BaseModel):
@@ -41,6 +43,8 @@ class ParseEvaluation(BaseModel):
 @app.get("/parse/{url:path}")
 async def parse_url(url: str = Path(...)) -> ParseOutput:
     print(f"[BACKEND-SERVER] Received parsing request for URL: {url}")
+    if not (re.match(URL_REGEX, url) and url.count("/") >= 3):
+        raise HTTPException(status_code=400, detail="Malformed URL")
     domain_to_parse: str = url.split("/")[2]
     print(f"[BACKEND-SERVER] Extracted domain from URL: {domain_to_parse}")
     if domain_to_parse not in WebParser.get_supported_domains():
@@ -60,6 +64,8 @@ def get_supported_domains() -> SupportedDomains:
 @app.get("/gold_standard/{url:path}")
 def get_gold_standard(url: str = Path(...)) -> GSEntry:
     domain = url.split("/")[2]
+    if not (re.match(URL_REGEX, url) and url.count("/") >= 3):
+        raise HTTPException(status_code=400, detail="Malformed URL")
     if domain not in WebParser.get_supported_domains():
         raise HTTPException(status_code=400, detail="Domain not supported")
     file_path = f"gs_data/" + domain.replace(".", "_") + "_gs.json"     # not src/ anymore for docker

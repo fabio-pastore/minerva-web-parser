@@ -4,7 +4,7 @@ from src.backend.rest.evaluation import get_tokens
 
 async def main():
     myParser : WebParser = WebParser()
-    data: dict[str, str] = await myParser.parse_url(url='https://it.wikipedia.org/wiki/Germania_nazista')
+    data: dict[str, str] = await myParser.parse_url(url='https://it.wikipedia.org/wiki/BabelNet')
 
     with open('src/outputs/last_parse.md', 'w', encoding='UTF-8') as fout: # NOTE: execute from minerva-web-parser dir
         fout.write(data.get("parsed_text")) 

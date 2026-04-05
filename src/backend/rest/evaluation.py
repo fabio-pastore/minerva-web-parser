@@ -4,7 +4,8 @@ import regex as re
 from typing import Sequence, Optional
 import math
 
-ROUGE_L_CAP = 8192 # good tradeoff between precision and execution time
+ROUGE_L_CAP: int = 8192 # good tradeoff between precision and execution time
+DEBUG: bool = True
 
 # ---------------------------------------------------------------------------
 # Data classes
@@ -71,8 +72,9 @@ def token_eval(gold: str, parsed: str) -> TokenLevelEval:
     precision: float = len(tokens_extracted.intersection(tokens_gs)) / len(tokens_extracted)
     recall: float = len(tokens_extracted.intersection(tokens_gs)) / len(tokens_gs)
     f1: float = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0.0
-    print(tokens_extracted.difference(tokens_gs)) # uncomment to check which tokens were noise
-    print(tokens_gs.difference(tokens_extracted)) # uncomment to check which tokens were missed by the parser
+    if (DEBUG):
+        print("[TKE-DEBUG] Parser introduced the following extra tokens: " + str(tokens_extracted.difference(tokens_gs))) # check which tokens were noise
+        print("[TKE-DEBUG] Parser missed the following tokens: " + str(tokens_gs.difference(tokens_extracted))) # check which tokens were missed by the parser
     return TokenLevelEval(precision=precision, recall=recall, f1=f1)
 
 # ---------------------------------------------------------------------------

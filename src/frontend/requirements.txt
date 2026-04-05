@@ -4,3 +4,4 @@ jinja2
 httpx
 requests
 python-multipart
+regex
