@@ -4,6 +4,7 @@ from starlette.templating import _TemplateResponse # used for type hinting in re
 import requests
 from requests import Response
 import regex as re
+from urllib.parse import quote
 
 URL_REGEX: str = "^https?:\\/\\/(?:www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b(?:[-a-zA-Z0-9()@:%_\\+.~#?&\\/=]*)$"
 API_BACKEND_URL = "http://backend:8003"
@@ -52,17 +53,18 @@ def get_index(request: Request):
     return templates.TemplateResponse(name="index.html", request=request, context={"request": request, "gs_urls": get_gs_urls(request, "index.html")})
 
 @app.post("/parse_url_evaluate_perf")
-def parse_url_evaluate_perf(request: Request, url: str = Form(...)):
+def parse_url_evaluate_performance(request: Request, url: str = Form(...)):
     if not (re.match(URL_REGEX, url) and url.count("/") >= 3):
         return report_error(request, "index.html", code=400, err_msg="Malformed URL")
-    request_url: str = API_BACKEND_URL + f"/parse/{url}"
+    encoded_url: str = quote(url, safe='') # necessary if passed URL is already encoded
+    request_url: str = API_BACKEND_URL + f"/parse/{encoded_url}"
     data = get_data(request_url)
     if not data.get("response_ok"):
         return report_error(request, "index.html", code=data.get("status_code"), err_msg=f"Failed to retrieve parsing of URL '{url}' from API server: {data.get("response_data").get("detail")}")
     html_text: str = data.get("response_data").get("html_text")
     parsed_text: str = data.get("response_data").get("parsed_text")
     # cannot use get_data() in this case, since we must check if backend server returns HTTP status code 404 for gold standard NOT FOUND
-    request_url = API_BACKEND_URL + f"/gold_standard/{url}"
+    request_url = API_BACKEND_URL + f"/gold_standard/{encoded_url}"
     data = None
     gs_not_found: bool = False
 

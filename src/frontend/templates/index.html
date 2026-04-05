@@ -118,7 +118,7 @@
         <br>
         <b>Bleu evaluation results:</b><br>
         bleu1: <b>{{ bleu1 | round(3) }}</b>, bleu2: <b>{{ bleu2 | round(3) }}</b>,
-        bleu3: <b>{{ bleu3 | round(3) }}</b>, bleu4: <b>{{ bleu4 | round(3) }}</b>
+        bleu3: <b>{{ bleu3 | round(3) }}</b>, bleu4: <b>{{ bleu4 | round(3) }}</b>,
         bleu_avg: <b>{{ bleu_avg | round(3) }}</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<i>(target: 1.0)</i><br>
         <br>
         {% else %}
@@ -156,7 +156,6 @@
     </div>
 </body>
 <script>
-    const URL_REGEX = /^https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?& \/=]*)$/;
     const url_input = document.getElementById("url_input");
     const hidden_data = document.getElementById("hidden_j2_data");
     const load_div = document.getElementById("ldiv");

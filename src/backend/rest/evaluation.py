@@ -4,7 +4,7 @@ import regex as re
 from typing import Sequence, Optional
 import math
 
-ROUGE_L_CAP: int = 8192 # good tradeoff between precision and execution time
+ROUGE_L_CAP: int = 2048 # good tradeoff between precision and execution time
 DEBUG: bool = True
 
 # ---------------------------------------------------------------------------
