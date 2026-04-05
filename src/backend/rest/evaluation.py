@@ -69,6 +69,8 @@ def get_tokens_list(raw_text: str) -> list[str]:
 def token_eval(gold: str, parsed: str) -> TokenLevelEval:
     tokens_extracted: set[str] = get_tokens(parsed)
     tokens_gs: set[str] = get_tokens(gold)
+    if not tokens_extracted or not tokens_gs:
+        return TokenLevelEval(precision=0.0, recall=0.0, f1=0.0)
     precision: float = len(tokens_extracted.intersection(tokens_gs)) / len(tokens_extracted)
     recall: float = len(tokens_extracted.intersection(tokens_gs)) / len(tokens_gs)
     f1: float = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0.0
