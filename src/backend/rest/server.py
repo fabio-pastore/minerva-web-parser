@@ -75,16 +75,16 @@ def get_supported_domains() -> SupportedDomains:
 
 @app.get("/gold_standard/{url:path}")
 def get_gold_standard(url: str = Path(...)) -> GSEntry:
-    domain = url.split("/")[2]
+    domain: str = url.split("/")[2]
     if not (re.match(URL_REGEX, url) and url.count("/") >= 3):
         raise HTTPException(status_code=400, detail="malformed URL")
     if domain not in WebParser.get_supported_domains():
         raise HTTPException(status_code=400, detail="domain not supported")
-    file_path = f"gs_data/" + domain.replace(".", "_") + "_gs.json"     # not src/ anymore for docker
+    file_path: str = f"gs_data/" + domain.replace(".", "_") + "_gs.json"     # not src/ anymore for docker
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="gold standard not found for the given URL")
     with open(file=file_path, mode='r', encoding='UTF-8') as fin:
-        data = json.load(fin)
+        data: dict = json.load(fin)
     for entry in data:
         if entry.get("url") == url:
             return GSEntry(url=entry.get("url"), domain=entry.get("domain"), title=entry.get("title"),
@@ -98,7 +98,7 @@ def get_all_golden_standard_domain(domain: str) -> ListGSEntry:
         raise HTTPException(status_code=400, detail="domain not supported")
     file_path: str = "gs_data/" + domain.replace(".", "_") + "_gs.json" # same as above
     with open(file_path, mode='r', encoding='UTF-8') as fin:
-        data = json.load(fin)
+        data: dict = json.load(fin)
     return ListGSEntry(gold_standard=data)
 
 @app.post("/evaluate")
@@ -121,7 +121,7 @@ async def full_gs_eval(domain: str) -> ParseEvaluation:
     gs: dict[str, str] = {}
     file_path: str = "gs_data/" + domain.replace(".", "_") + "_gs.json" #same
     with open(file_path, mode='r', encoding='UTF-8') as fin:
-        data = json.load(fin)
+        data: dict = json.load(fin)
         for entry in data:
             gs[entry.get('url')] = entry.get('gold_text')
 
@@ -165,8 +165,6 @@ async def full_gs_eval(domain: str) -> ParseEvaluation:
 
     return ParseEvaluation(token_level_eval=full_token_eval, length_eval= full_length_eval, \
                            rouge_eval= full_rouge_eval, bleu_eval= full_bleu_eval)
-        
-#TODO: gs_eval that does it for a single webpage, so we can avoid calling /parse/ and copy paste into  /evaluate/
 
 
     

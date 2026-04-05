@@ -8,7 +8,7 @@ class WikipediaParser(WebParser):
     __SUPPORTED_DOMAIN: str = 'it.wikipedia.org'
     __TAG_EXCLUSIONS: list[str] = ['style', 'script', 'noscript', 'figure', 'meta', 'img']
     __TARGETS: list[str] = ['.mw-parser-output']
-    __MARKDOWN_REGEX = r"##\s+(?:See also|Notes|References|External links|Voci correlate|Note|Bibliografia|Collegamenti esterni|Altri progetti|Pagine correlate|Strumenti)" 
+    __MARKDOWN_REGEX: str = r"##\s+(?:See also|Notes|References|External links|Voci correlate|Note|Bibliografia|Collegamenti esterni|Altri progetti|Pagine correlate|Strumenti)" 
     # this is necessary since apparently some pages contain an arbitrary number of whitespaces between "##" and "Notes, References, etc."
 
     __MARKDOWN_GEN_OPTIONS: dict[str, bool] = {
@@ -18,12 +18,13 @@ class WikipediaParser(WebParser):
     }
 
     __CSS_EXCLUSIONS: str = '''
-    .infobox, .sinottico, .mw-editsection, .mw-references-wrap, .mw-references-columns, .noprint, .CdA, .mw-empty-elt,
-    .hatnote, .avviso, .avviso-contenuto, .vedi-anche, .thumb, .mw-file-description, .mw-file-element, .navigation-not-searchable,
+    .infobox, .sinottico, .mw-editsection, .mw-references-wrap, .mw-references-columns, .CdA, .mw-empty-elt, .sinottico-divisione, .sinottico-testata,
+    .hatnote, .avviso, .avviso-contenuto, .vedi-anche, .thumb, .mw-file-description, .mw-file-element, .navigation-not-searchable, .sinottico-testo-centrale,
     .col-begin[role="presentation"], .unsortable, .flagicon, .noviewer, .itwiki-template-da-Aiuto-a-Wikipedia, .itwiki-template-approfondimento-intestazione,
-    .itwiki-template-approfondimento, .itwiki-template-approfondimento-destra, .mw-collapsible, .mw-collapsed, .avviso-disambigua,
-    .mw-made-collapsible, .box-Unreferenced_section, .ambox-Unreferenced, .gallery, .mw-gallery-traditional, .mw-indicator, .mw-highlight-copy-button
+    .itwiki-template-approfondimento, .itwiki-template-approfondimento-destra, .avviso-disambigua, .avviso-mini, .avviso-mini-informazioni,
+    .box-Unreferenced_section, .ambox-Unreferenced, .gallery, .mw-gallery-traditional, .mw-indicator, .mw-highlight-copy-button, .ext-phonos-PhonosButton
     '''
+    # NOTE: temporarily removed the following exclusions: .mw-collapsible, .mw-collapsed, .mw-made-collapsible, .noprint for performance improvement
     
     def __init__(self):
         super().__init__(
@@ -40,13 +41,13 @@ class WikipediaParser(WebParser):
     
     def __cleanup(self, md: str) -> str:
         '''Cleans up the markdown and returns cleaned markdown string'''
-        re_match = re.search(WikipediaParser.__MARKDOWN_REGEX, md, flags=re.IGNORECASE)
+        re_match: re.Match[str] | None = re.search(WikipediaParser.__MARKDOWN_REGEX, md, flags=re.IGNORECASE)
         if (re_match):
             index_match: int = re_match.start()
-            md = md[:index_match]
-        md = json.dumps(md, ensure_ascii=False) # escape markdown string for JSON (also adds double quotes at the beginning and end of the string, which will be removed in the final output)
+            md: str = md[:index_match]
+        md: str = json.dumps(md, ensure_ascii=False) # escape markdown string for JSON (also adds double quotes at the beginning and end of the string, which will be removed in the final output)
         if len(md) >= 2:
-          md = md[1:-1] # remove double quotes from json.dumps()
+            md: str = md[1:-1] # remove double quotes from json.dumps()
         return md
     
     async def parse_url(self, url: str) -> dict[str, str]:
@@ -63,20 +64,20 @@ class WikipediaParser(WebParser):
             if (not success or result.markdown.raw_markdown == '\n'): # check for empty results or crawling errors (URL not reachable, etc.)
                 return {} # return empty dict on crawl failure
 
-            soup = BeautifulSoup(result.html, 'html.parser')
-            h1_elem = soup.find('h1', id='firstHeading')
+            soup: BeautifulSoup = BeautifulSoup(result.html, 'html.parser')
+            h1_elem: BeautifulSoup._AtMostOneTag = soup.find('h1', id='firstHeading')
             title: str = h1_elem.get_text(strip=True) if h1_elem else 'Unknown title'
             webpage_title: str = result.metadata.get("title")
 
             page_markdown: str = f"# {title}\n" + result.markdown.raw_markdown # add title to extracted markdown
-            page_markdown = self.__cleanup(page_markdown)
-            body_length = len(page_markdown)
+            page_markdown: str = self.__cleanup(page_markdown)
+            body_length: int = len(page_markdown)
 
             if (WebParser.debug_on()):
                 print(f"[WebParser] Original HTML file length (in characters): {len(result.html)}")
 
             if (WebParser.debug_on()):
-                print(f"[WebParser] Successfully parsed article titled '{title}' for a total of {body_length} characters.")
+                print(f"[WebParser] Successfully webpage titled '{webpage_title}' for a total of {body_length} characters.")
                 if (self.md_gen_opt.get("ignore_links")):
                     print("[WebParser] | [WARNING] Links are currently being ignored! To change this behaviour, set 'ignore_links' in MARKDOWN_GEN_OPTIONS to False.")
 

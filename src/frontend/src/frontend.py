@@ -36,11 +36,11 @@ def report_error(request: Request, name: str, code: int, err_msg: str) -> _Templ
     return templates.TemplateResponse(request=request, name=name, context={"request": request, "error": f"{err_msg} ({code})"})
 
 def get_gs_urls(request: Request, name: str) -> list[str]:
-    domains_data = get_data(API_BACKEND_URL + "/domains")
-    gs_urls = []
+    domains_data: tuple[dict, int, bool] = get_data(API_BACKEND_URL + "/domains")
+    gs_urls: list[str] = []
     if domains_data.get("response_ok") and "domains" in domains_data.get("response_data"):
         for domain in domains_data.get("response_data").get("domains"):
-            gs_data = get_data(API_BACKEND_URL + f"/full_gold_standard/{domain}")
+            gs_data: dict = get_data(API_BACKEND_URL + f"/full_gold_standard/{domain}")
             if (gs_data.get("response_ok") and "gold_standard" in gs_data.get("response_data")):
                 for e in gs_data.get("response_data").get("gold_standard"):
                     gs_urls.append(e["url"])
@@ -58,20 +58,20 @@ def parse_url_evaluate_performance(request: Request, url: str = Form(...)):
         return report_error(request, "index.html", code=400, err_msg="Malformed URL")
     encoded_url: str = quote(url, safe='') # necessary if passed URL is already encoded
     request_url: str = API_BACKEND_URL + f"/parse/{encoded_url}"
-    data = get_data(request_url)
+    data: tuple[dict, int, bool] = get_data(request_url)
     if not data.get("response_ok"):
         return report_error(request, "index.html", code=data.get("status_code"), err_msg=f"Failed to retrieve parsing of URL '{url}' from API server: {data.get("response_data").get("detail")}")
     html_text: str = data.get("response_data").get("html_text")
     parsed_text: str = data.get("response_data").get("parsed_text")
     # cannot use get_data() in this case, since we must check if backend server returns HTTP status code 404 for gold standard NOT FOUND
-    request_url = API_BACKEND_URL + f"/gold_standard/{encoded_url}"
-    data = None
+    request_url: str = API_BACKEND_URL + f"/gold_standard/{encoded_url}"
+    data: None = None
     gs_not_found: bool = False
 
     try:
-        response = requests.get(request_url)
+        response: Response = requests.get(request_url)
         response.raise_for_status()
-        data = response.json()
+        data: dict = response.json()
     except requests.RequestException:
         print("[FRONTEND-SERVER] API server could not retrieve gold standard for specified URL: " + response.json().get("detail")) 
         # this is not necessarily an error, we simply might not have a GS for a requested URL
@@ -80,7 +80,7 @@ def parse_url_evaluate_performance(request: Request, url: str = Form(...)):
     context_dict: dict[str, any] = {"request": request, "html_text": html_text, "parsed_text": parsed_text, "requested_url": url, "gs_urls": get_gs_urls(request, "index.html")}
 
     if not (gs_not_found):
-        request_url = API_BACKEND_URL + "/evaluate"
+        request_url: str = API_BACKEND_URL + "/evaluate"
         gold_text: str = data.get("gold_text")
 
         evaluation_payload: dict[str, str] = {
@@ -88,11 +88,11 @@ def parse_url_evaluate_performance(request: Request, url: str = Form(...)):
             "gold_text": gold_text
         }
 
-        data = post_data(request_url, json_payload=evaluation_payload)
+        data: tuple[dict, int, bool] = post_data(request_url, json_payload=evaluation_payload)
         if not data.get("response_ok"):
             return report_error(request, "index.html", code=data.get("status_code"), err_msg=f"Failed to retrieve parse evaluation from API server: {data.get("response_data").get("detail")}")
         
-        data = data.get("response_data")
+        data: tuple[dict, int, bool] = data.get("response_data")
 
         token_eval : dict[str, float] = data.get("token_level_eval")
         length_eval : dict[str, float|int] = data.get("length_eval")

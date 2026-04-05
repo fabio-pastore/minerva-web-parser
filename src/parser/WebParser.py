@@ -11,7 +11,7 @@ class WebParser(ABC):
     @abstractmethod
     def __init__(self, targets: list[str], tag_excl: list[str], md_gen: markdown_generation_strategy.MarkdownGenerationStrategy, md_gen_opt: dict[str, bool], css_excl: str):
         self.browser_cfg : BrowserConfig = BrowserConfig(headless = True)
-        self.md_gen_opt = md_gen_opt
+        self.md_gen_opt: dict[str, bool] = md_gen_opt
         self.crawler_cfg : CrawlerRunConfig = CrawlerRunConfig (
             target_elements = targets,    
             excluded_tags = tag_excl, 
