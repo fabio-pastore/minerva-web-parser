@@ -4,6 +4,7 @@ from src.parser.WikipediaParser import WikipediaParser
 from src.backend.rest.evaluation import get_tokens
 
 async def main():
+    """Used to test single runs of the parser on a specific URL without starting the docker container"""
     myParser : WebParser = WikipediaParser()
     data: dict[str, str] = await myParser.parse_url(url='https://it.wikipedia.org/wiki/Stati_del_mondo')
 

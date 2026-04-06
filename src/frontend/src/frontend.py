@@ -12,7 +12,18 @@ API_BACKEND_URL = "http://backend:8003"
 app = FastAPI()
 templates = Jinja2Templates(directory="templates") # check if this works 
 
-def post_data(req_url: str, json_payload: str) -> dict[str, str|int|bool]: 
+def post_data(req_url: str, json_payload: str) -> dict[str, str|int|bool]:
+    """
+    Sends a POST request with a JSON payload to the specified URL.
+
+    Args:
+        req_url (str): The destination URL for the POST request.
+        json_payload (str): The JSON data to be sent in the request body.
+
+    Returns:
+        dict[str, str | int | bool]: A dictionary containing the parsed JSON response ('response_data'),
+            the HTTP status code ('status_code'), and a boolean indicating success ('response_ok').
+    """ 
     response: Response | None = None
     try:
         response = requests.post(req_url, json=json_payload)
@@ -23,6 +34,16 @@ def post_data(req_url: str, json_payload: str) -> dict[str, str|int|bool]:
     return {"response_data": response.json(), "status_code": response.status_code, "response_ok": response.ok}
 
 def get_data(req_url: str) -> tuple[dict, int, bool]:
+    """
+    Sends a GET request to the specified URL and retrieves the data.
+
+    Args:
+        req_url (str): The destination URL for the GET request.
+
+    Returns:
+        dict: A dictionary containing the parsed JSON response ('response_data'), 
+            the HTTP status code ('status_code'), and a boolean indicating success ('response_ok').
+    """
     response: Response | None  = None
     try:
         response = requests.get(req_url)
@@ -32,10 +53,35 @@ def get_data(req_url: str) -> tuple[dict, int, bool]:
 
     return {"response_data": response.json(), "status_code": response.status_code, "response_ok": response.ok}
 
-def report_error(request: Request, name: str, code: int, err_msg: str) -> _TemplateResponse: 
+def report_error(request: Request, name: str, code: int, err_msg: str) -> _TemplateResponse:
+    """
+    Generates a Jinja2 template response to display an error message.
+
+    Args:
+        request (Request): The incoming FastAPI request.
+        name (str): The name of the HTML template to render.
+        code (int): The HTTP error code associated with the error.
+        err_msg (str): A descriptive error message to display.
+
+    Returns:
+        _TemplateResponse: The rendered HTML template containing the error details.
+    """ 
     return templates.TemplateResponse(request=request, name=name, context={"request": request, "error": f"{err_msg} ({code})"})
 
 def get_gs_urls(request: Request, name: str) -> list[str]:
+    """
+    Retrieves a list of all Gold Standard URLs from the backend API.
+
+    Fetches supported domains first, then iterates through them to collect 
+    all available gold standard URLs.
+
+    Args:
+        request (Request): The incoming FastAPI request.
+        name (str): The template name to use in case an error reporting response is needed.
+
+    Returns:
+        list[str]: A list of URLs for which a gold standard exists. Returns an error template if API calls fail.
+    """
     domains_data: tuple[dict, int, bool] = get_data(API_BACKEND_URL + "/domains")
     gs_urls: list[str] = []
     if domains_data.get("response_ok") and "domains" in domains_data.get("response_data"):
@@ -49,11 +95,35 @@ def get_gs_urls(request: Request, name: str) -> list[str]:
     return gs_urls
 
 @app.get("/")
-def get_index(request: Request):
+def get_index(request: Request) -> _TemplateResponse:
+    """
+    Renders the main index page.
+
+    Args:
+        request (Request): The incoming FastAPI request.
+
+    Returns:
+        _TemplateResponse: The rendered 'index.html' template populated with gold standard URLs.
+    """
     return templates.TemplateResponse(name="index.html", request=request, context={"request": request, "gs_urls": get_gs_urls(request, "index.html")})
 
 @app.post("/parse_url_evaluate_perf")
-def parse_url_evaluate_performance(request: Request, url: str = Form(...)):
+def parse_url_evaluate_performance(request: Request, url: str = Form(...)) -> _TemplateResponse:
+    """
+    Parses a provided URL, fetches its gold standard, and evaluates parsing performance.
+
+    Validates the URL, triggers the parsing via the backend API, checks for an existing
+    gold standard, and if found, requests an evaluation (token, length, ROUGE, BLEU) 
+    comparing the parsed text against the gold text.
+
+    Args:
+        request (Request): The incoming FastAPI request.
+        url (str): The target URL submitted via form data to be parsed and evaluated.
+
+    Returns:
+        _TemplateResponse: The rendered 'index.html' template containing parsing results 
+            and evaluation metrics if a gold standard is found.
+    """
     if not (re.match(URL_REGEX, url) and url.count("/") >= 3):
         return report_error(request, "index.html", code=400, err_msg="Malformed URL")
     encoded_url: str = quote(url, safe='') # necessary if passed URL is already encoded

@@ -55,6 +55,22 @@ class ParseEvaluation(BaseModel):
 
 @app.get("/parse/{url:path}")
 async def parse_url(url: str = Path(...)) -> ParseOutput:
+    """
+    Parses the target URL and extracts its markdown content.
+
+    Validates the URL format and domain against supported parsers, then uses 
+    the appropriate WebParser to extract and clean the content.
+
+    Args:
+        url (str): The full URL of the web page to parse.
+
+    Returns:
+        ParseOutput: An object containing the URL, domain, webpage title, 
+            raw HTML text, and the final parsed markdown text.
+
+    Raises:
+        HTTPException: If the URL is malformed, the domain is unsupported, or the URL is unreachable.
+    """
     print(f"[API-SERVER] Received parsing request for URL: {url}")
     if not (re.match(URL_REGEX, url) and url.count("/") >= 3):
         raise HTTPException(status_code=400, detail="malformed URL")
@@ -71,10 +87,31 @@ async def parse_url(url: str = Path(...)) -> ParseOutput:
 # Endpoint to get the list of supported domains
 @app.get("/domains")
 def get_supported_domains() -> SupportedDomains:
+    """
+    Retrieves the list of web domains currently supported by the available parsers.
+
+    Returns:
+        SupportedDomains: An object containing a list of supported domain strings.
+    """
     return SupportedDomains(domains=WebParser.get_supported_domains())
 
 @app.get("/gold_standard/{url:path}")
 def get_gold_standard(url: str = Path(...)) -> GSEntry:
+    """
+    Retrieves the gold standard entry for a specific URL.
+
+    Looks up the corresponding domain's JSON file in the 'gs_data' directory 
+    and searches for an exact URL match.
+
+    Args:
+        url (str): The URL to find the gold standard text for.
+
+    Returns:
+        GSEntry: The gold standard entry containing the domain, title, HTML text, and gold text.
+
+    Raises:
+        HTTPException: If the URL is malformed, domain unsupported, or the gold standard is not found.
+    """
     domain: str = url.split("/")[2]
     if not (re.match(URL_REGEX, url) and url.count("/") >= 3):
         raise HTTPException(status_code=400, detail="malformed URL")
@@ -94,6 +131,18 @@ def get_gold_standard(url: str = Path(...)) -> GSEntry:
 
 @app.get("/full_gold_standard/{domain}")
 def get_all_golden_standard_domain(domain: str) -> ListGSEntry:
+    """
+    Retrieves all gold standard entries for a given domain.
+
+    Args:
+        domain (str): The domain to fetch all gold standards for.
+
+    Returns:
+        ListGSEntry: An object containing a list of all gold standard entries for the specified domain.
+
+    Raises:
+        HTTPException: If the requested domain is not supported.
+    """
     if domain not in WebParser.get_supported_domains():
         raise HTTPException(status_code=400, detail="domain not supported")
     file_path: str = "gs_data/" + domain.replace(".", "_") + "_gs.json" # same as above
@@ -103,6 +152,17 @@ def get_all_golden_standard_domain(domain: str) -> ListGSEntry:
 
 @app.post("/evaluate")
 def evaluate_parsing(eval_input: EvaluationInput) -> ParseEvaluation:
+    """
+    Evaluates the quality of parsed text against a gold standard text.
+
+    Calculates token-level metrics, length ratios, ROUGE scores, and BLEU scores.
+
+    Args:
+        eval_input (EvaluationInput): An object containing both the 'parsed_text' and 'gold_text'.
+
+    Returns:
+        ParseEvaluation: An object containing aggregated evaluation metrics.
+    """
     parsed_text: str = eval_input.parsed_text
     gold_text: str = eval_input.gold_text
     token_eval_res: TokenLevelEval = token_eval(gold_text, parsed_text)
@@ -114,6 +174,21 @@ def evaluate_parsing(eval_input: EvaluationInput) -> ParseEvaluation:
 
 @app.get("/full_gs_eval/{domain}")
 async def full_gs_eval(domain: str) -> ParseEvaluation:
+    """
+    Evaluates parsing performance across all gold standard URLs for a specific domain.
+
+    Parses all available URLs in the gold standard dataset for the domain and computes 
+    the average token, length, ROUGE, and BLEU evaluation metrics.
+
+    Args:
+        domain (str): The domain to perform the full dataset evaluation on.
+
+    Returns:
+        ParseEvaluation: An object containing the averaged evaluation metrics for the entire domain.
+
+    Raises:
+        HTTPException: If the requested domain is not supported.
+    """
     if domain not in WebParser.get_supported_domains():
         raise HTTPException(status_code=400, detail="domain not supported")
     

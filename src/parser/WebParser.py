@@ -26,12 +26,25 @@ class WebParser(ABC):
 
     @classmethod
     def __import_supported_domains(cls) -> None:
-        """Imports domains.json file and assigns its contents to WebParser.__SUPPORTED_DOMAINS"""
+        """
+        Imports domains.json file and assigns its contents to WebParser.__SUPPORTED_DOMAINS
+
+        Returns:
+            None
+        """
         with open("domains.json", mode='r', encoding='UTF-8') as fin:
             cls.__SUPPORTED_DOMAINS = json.load(fin).get("domains")
     
     @classmethod
     def get_supported_domains(cls) -> set[str]:
+        """
+        Retrieves the set of currently supported domains.
+
+        Loads domains from 'domains.json' on the first call and caches them.
+
+        Returns:
+            set[str]: A set of supported domain strings.
+        """
         if not cls.__SUPPORTED_DOMAINS:
             cls.__import_supported_domains()
         return cls.__SUPPORTED_DOMAINS
@@ -42,4 +55,13 @@ class WebParser(ABC):
         
     @abstractmethod
     async def parse_url(self, url: str) -> dict[str, str]:
+        """
+        Abstract method to parse a given URL.
+
+        Args:
+            url (str): The target URL to parse.
+
+        Returns:
+            dict[str, str]: A dictionary containing parsing results such as url, domain, title, etc.
+        """
         pass  

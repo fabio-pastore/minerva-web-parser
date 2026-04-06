@@ -39,34 +39,71 @@ class BleuEval(BaseModel):
 # ---------------------------------------------------------------------------
 # Helper functions
 # ---------------------------------------------------------------------------
-def get_tokens(raw_text: str) -> set[str]:
+
+def sanitize_markdown(raw_text: str) -> str:
+    """
+    Auxiliary get_tokens() and get_tokens_list() helper function for markdown sanitization.
+
+    Cleans the text by removing markdown links, unlinked notes, punctuation, 
+    and special symbols before tokenizing.
+
+    Args:
+        raw_text (str): The raw markdown to sanitize.
+
+    Return:
+        str: Sanitized markdown string.
+    """
     punctuation_remover: dict[int, int | None] = str.maketrans({char: ' ' for char in string.punctuation})
-    raw_text = re.sub(r'\[\[[[0-9]+\]\]', ' ', raw_text) # remove markdown unlinked notes
-    raw_text = re.sub(r'(\[[^\]]*\])\(\s*https?://(?:[^()]|\([^()]*\))*\)', r'\1', raw_text) # remove json dumped hypertext links
-    raw_text = re.sub(r'\(\s*https?://(?:[^()]|\([^()]*\))*\)', ' ', raw_text) # remove json dumped cite note links
-    raw_text = re.sub(r'\\n|\\r', ' ', raw_text) # for GS input 
-    raw_text: str = raw_text.translate(punctuation_remover) # removes punctuation
-    raw_text = re.sub(r'[^\w\s]', ' ', raw_text) # remove symbols like —, •, → that string.punctuation might have missed
-    
-    tokens: set[str] = set(raw_text.strip().lower().split())
+    out_text: str = re.sub(r'\[\[[[0-9]+\]\]', ' ', raw_text) # remove markdown unlinked notes
+    out_text = re.sub(r'(\[[^\]]*\])\(\s*https?://(?:[^()]|\([^()]*\))*\)', r'\1', out_text) # remove json dumped hypertext links
+    out_text = re.sub(r'\(\s*https?://(?:[^()]|\([^()]*\))*\)', ' ', out_text) # remove json dumped cite note links
+    out_text = re.sub(r'\\n|\\r', ' ', out_text) # for GS input 
+    out_text: str = out_text.translate(punctuation_remover) # removes punctuation
+    out_text = re.sub(r'[^\w\s]', ' ', out_text) # remove symbols like —, •, → that string.punctuation might have missed
+    return out_text
+
+def get_tokens(raw_text: str) -> set[str]:
+    """
+    Extracts a set of unique, lowercase alphanumeric tokens from raw text.
+
+    Args:
+        raw_text (str): The raw text to tokenize.
+
+    Returns:
+        set[str]: A set of unique string tokens found in the text.
+    """
+    sanitized_md: str = sanitize_markdown(raw_text)
+    tokens: set[str] = set(sanitized_md.strip().lower().split())
     return tokens
 
 def get_tokens_list(raw_text: str) -> list[str]:
-    punctuation_remover: dict[int, int | None] = str.maketrans({char: ' ' for char in string.punctuation})
-    raw_text = re.sub(r'\[\[[0-9]+\]\]', ' ', raw_text) # remove markdown unlinked notes
-    raw_text = re.sub(r'(\[[^\]]*\])\(\s*https?://(?:[^()]|\([^()]*\))*\)', r'\1', raw_text) # remove hypertext links
-    raw_text = re.sub(r'\(\s*https?://(?:[^()]|\([^()]*\))*\)', ' ', raw_text) # remove cite note links
-    raw_text = re.sub(r'\\n|\\r', ' ', raw_text) # for GS input
-    raw_text: str = raw_text.translate(punctuation_remover) # removes punctuation
-    raw_text = re.sub(r'[^\w\s]', ' ', raw_text) # remove symbols like —, •, → that string.punctuation might have missed
-    
-    tokens: list[str] = raw_text.strip().lower().split()
+    """
+    Extracts an ordered list of lowercase alphanumeric tokens from raw text.
+
+    Args:
+        raw_text (str): The raw text to tokenize.
+
+    Returns:
+        list[str]: A list of string tokens in their sequential order.
+    """
+    sanitized_md: str = sanitize_markdown(raw_text)
+    tokens: list[str] = sanitized_md.strip().lower().split()
     return tokens
 
 # ---------------------------------------------------------------------------
 # TOKEN LEVEL EVAL
 # ---------------------------------------------------------------------------
 def token_eval(gold: str, parsed: str) -> TokenLevelEval:
+    """
+    Evaluates parsing performance using token-level precision, recall, and F1 score.
+
+    Args:
+        gold (str): The reference gold standard text.
+        parsed (str): The generated parsed text.
+
+    Returns:
+        TokenLevelEval: An object containing precision, recall, and F1 score floats.
+    """
     tokens_extracted: set[str] = get_tokens(parsed)
     tokens_gs: set[str] = get_tokens(gold)
     if not tokens_extracted or not tokens_gs:
@@ -83,6 +120,16 @@ def token_eval(gold: str, parsed: str) -> TokenLevelEval:
 # LENGTH RATIO EVAL
 # ---------------------------------------------------------------------------
 def length_eval(gold: str, parsed: str) -> LengthEval:
+    """
+    Computes character and word length ratios between the parsed and gold text.
+
+    Args:
+        gold (str): The reference gold standard text.
+        parsed (str): The generated parsed text.
+
+    Returns:
+        LengthEval: An object containing exact character/word counts and their ratios.
+    """
     gw, pw = len(get_tokens_list(gold)), len(get_tokens_list(parsed))
     gc, pc = len(gold), len(parsed)
     return LengthEval(
@@ -136,6 +183,16 @@ def _rouge_f1(ref_toks: list[str], hyp_toks: list[str], n: int) -> float:
  
  
 def rouge_eval(gold: str, parsed: str) -> RougeEval:
+    """
+    Computes ROUGE-1, ROUGE-2, and ROUGE-L F1 scores for the parsed text.
+
+    Args:
+        gold (str): The reference gold standard text.
+        parsed (str): The generated parsed text.
+
+    Returns:
+        RougeEval: An object containing ROUGE-1, ROUGE-2, and ROUGE-L F1 scores.
+    """
     g, p = get_tokens_list(gold), get_tokens_list(parsed)
     return RougeEval(
         rouge1_f1 = round(_rouge_f1(g, p, 1), 4),   # n = 1, individual words
@@ -162,6 +219,16 @@ def _ngram_precision(ref_toks: list[str], hyp_toks: list[str], n: int) -> float:
     return clipped / total if total else 0.0
  
 def bleu_eval(gold: str, parsed: str) -> BleuEval:
+    """
+    Computes BLEU-1 through BLEU-4 scores and an average BLEU score with a brevity penalty.
+
+    Args:
+        gold (str): The reference gold standard text.
+        parsed (str): The generated parsed text.
+
+    Returns:
+        BleuEval: An object containing individual BLEU scores and their geometric mean.
+    """
     g, p = get_tokens_list(gold), get_tokens_list(parsed)
     precs = [_ngram_precision(g, p, n) for n in range(1, 5)]
     # brevity penalty, if len(p) is very small -> bp close to 0
