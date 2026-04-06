@@ -50,7 +50,7 @@ class WebParser(ABC):
         return cls.__SUPPORTED_DOMAINS
     
     @classmethod
-    def debug_on(cls) -> bool:
+    def get_debug(cls) -> bool:
         return cls.__DEBUG
         
     @abstractmethod

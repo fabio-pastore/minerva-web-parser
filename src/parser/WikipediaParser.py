@@ -20,8 +20,8 @@ class WikipediaParser(WebParser):
     __CSS_EXCLUSIONS: str = '''
     .infobox, .sinottico, .mw-editsection, .mw-references-wrap, .mw-references-columns, .CdA, .mw-empty-elt, .sinottico-divisione, .sinottico-testata,
     .hatnote, .avviso, .avviso-contenuto, .vedi-anche, .thumb, .mw-file-description, .mw-file-element, .navigation-not-searchable, .sinottico-testo-centrale,
-    .col-begin[role="presentation"], .unsortable, .flagicon, .noviewer, .itwiki-template-da-Aiuto-a-Wikipedia, .itwiki-template-approfondimento-intestazione,
-    .itwiki-template-approfondimento, .itwiki-template-approfondimento-destra, .avviso-disambigua, .avviso-mini, .avviso-mini-informazioni,
+    .col-begin[role="presentation"], .unsortable, .flagicon, .noviewer, .itwiki-template-da-Aiuto-a-Wikipedia, .itwiki-template-approfondimento-intestazione, .toc,
+    .itwiki-template-approfondimento, .itwiki-template-approfondimento-destra, .avviso-disambigua, .avviso-mini, .avviso-mini-informazioni, .itwiki_template_toc,
     .box-Unreferenced_section, .ambox-Unreferenced, .gallery, .mw-gallery-traditional, .mw-indicator, .mw-highlight-copy-button, .ext-phonos-PhonosButton
     '''
     # NOTE: temporarily removed the following exclusions: .mw-collapsible, .mw-collapsed, .mw-made-collapsible, .noprint for performance improvement
@@ -93,10 +93,10 @@ class WikipediaParser(WebParser):
             page_markdown: str = self.__cleanup(page_markdown)
             body_length: int = len(page_markdown)
 
-            if (WebParser.debug_on()):
+            if (WebParser.get_debug()):
                 print(f"[WebParser] Original HTML file length (in characters): {len(result.html)}")
 
-            if (WebParser.debug_on()):
+            if (WebParser.get_debug()):
                 print(f"[WebParser] Successfully webpage titled '{webpage_title}' for a total of {body_length} characters.")
                 if (self.md_gen_opt.get("ignore_links")):
                     print("[WebParser] | [WARNING] Links are currently being ignored! To change this behaviour, set 'ignore_links' in MARKDOWN_GEN_OPTIONS to False.")

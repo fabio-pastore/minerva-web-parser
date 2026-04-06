@@ -6,6 +6,7 @@ import math
 
 ROUGE_L_CAP: int = 2048 # good tradeoff between precision and execution time
 DEBUG: bool = True
+PHONETIC_SYMBOLS = ['ˈ', 'ˌ', 'ː', 'ˑ', '˘', '.', '‿'] # particular phonetic separators (e.g. see https://it.wikipedia.org/wiki/Alfabeto_fonetico_internazionale)
 
 # ---------------------------------------------------------------------------
 # Data classes
@@ -53,12 +54,19 @@ def sanitize_markdown(raw_text: str) -> str:
     Return:
         str: Sanitized markdown string.
     """
-    punctuation_remover: dict[int, int | None] = str.maketrans({char: ' ' for char in string.punctuation})
+    punctuation_remover: dict = str.maketrans({char: ' ' for char in string.punctuation})
+    phonetic_sym_remover: dict = str.maketrans({char: '' for char in PHONETIC_SYMBOLS}) # extremely niche applications, still useful for edge cases
     out_text: str = re.sub(r'\[\[[[0-9]+\]\]', ' ', raw_text) # remove markdown unlinked notes
+    out_text = re.sub(r'\*\*\*|\*\*|\*|~~', '', out_text) 
+    """
+    The previous regex removes markdown formatting in particular cases where we would otherwise incorrectly split tokens, losing accuracy 
+    (NOTE: this is possible only if the word is in the form "a[bold(b)]" and not "a[bold(b)]a", since in markdown the latter is translated as a**b** a)
+    """
     out_text = re.sub(r'(\[[^\]]*\])\(\s*https?://(?:[^()]|\([^()]*\))*\)', r'\1', out_text) # remove json dumped hypertext links
     out_text = re.sub(r'\(\s*https?://(?:[^()]|\([^()]*\))*\)', ' ', out_text) # remove json dumped cite note links
     out_text = re.sub(r'\\n|\\r', ' ', out_text) # for GS input 
-    out_text: str = out_text.translate(punctuation_remover) # removes punctuation
+    out_text = out_text.translate(punctuation_remover) # removes punctuation
+    out_text = out_text.translate(phonetic_sym_remover) # removes rare phonetic symbols 
     out_text = re.sub(r'[^\w\s]', ' ', out_text) # remove symbols like —, •, → that string.punctuation might have missed
     return out_text
 
