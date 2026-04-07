@@ -66,7 +66,7 @@ def report_error(request: Request, name: str, code: int, err_msg: str) -> _Templ
     Returns:
         _TemplateResponse: The rendered HTML template containing the error details.
     """ 
-    return templates.TemplateResponse(request=request, name=name, context={"request": request, "error": f"{err_msg} ({code})"})
+    return templates.TemplateResponse(request=request, name=name, context={"request": request, "error": f"{err_msg} ({code})", "gs_urls": get_gs_urls(request, "index.html")})
 
 def get_gs_urls(request: Request, name: str) -> list[str]:
     """

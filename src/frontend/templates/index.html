@@ -9,40 +9,6 @@
             padding: 0px;
         }
 
-        .header-div {
-            display: grid;
-            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); 
-            max-width: 80vw;
-            width: 80vw;
-            margin: auto; 
-            margin-bottom: 10px; 
-            font-weight: bold;
-            font-size: 20px;
-            text-align: center;
-        }
-
-        .result-div {
-            display: grid;
-            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-            border: 1px solid black;
-            max-width: 80vw;
-            width: 80vw;
-            min-height: 300px;
-            margin: auto;
-        }
-
-        .column {
-            text-align: justify;
-            font-size: 16px;
-            padding: 10px;
-            overflow-wrap: break-word;
-            word-break: break-word;
-        }
-
-        .column:first-child {
-            border-right: 1px solid black;
-        }
-
         .loading-div {
             position: fixed;
             pointer-events: none;
@@ -64,6 +30,7 @@
         }
 
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 </head>
 <body>
     <div id="ldiv" class="loading-div">
@@ -72,87 +39,150 @@
             <b>This may take a while</b>
         </div>
     </div>
-    <div style="margin: 15px auto 0 auto; max-width: fit-content; text-align: center; border: 1px solid black; min-width: 95vw; height: fit-content">
-        <h1 style="margin: 0px; padding: 0px;">WebParser v-1.0</h1>
-        <h6 style="margin: 5px; font-weight: normal; font-size: 14px">Made by Alessandro, Fabio and Yihao</h6>
-    </div><br>
-    <br>
-    <div style="width: 100%; text-align: center; margin: auto;">
-        <form id="formid" method="post" action="/parse_url_evaluate_perf" onsubmit="display_loading_div()">
-            <label>URL: </label>
-            <input type="text" name="url" id='url_input' placeholder="https://mydomain.org/webpage" size="50" required>
-
-            <label>Select GS</label>
-            <select name="url_select" onchange="document.querySelector('input[name=url]').value = this.value">
-                <option value=""> GS URL </option>
-                {% for url in gs_urls %}
-                    <option value="{{ url }}">{{ url }}</option>
-                {% endfor %}
-            </select>
-
-            <button type="submit">Parse</button><br>
-            <br>
-        </form>
-        <div style="width: 100%; text-align: center;">
+    <div class="bg-gray-50">
+        <div class="text-center p-4 w-full shadow-md border-black bg-gray-100">
+                <h1 class="text-4xl font-semibold">WebParser v-1.0</h1>
+                <h6 class="text-sm font-light">Made by Fabio Pastore, Yihao Wu & Alessandro Zannone</h6>
+        </div><br>
+        <br>
+        <div class="w-[95vw] text-center m-auto rounded-lg shadow-md border p-4 border-black bg-gray-100">
+            <form id="formid" method="post" action="/parse_url_evaluate_perf" onsubmit="display_loading_div()">
+                <label class="font-semibold">URL: </label>
+                <input class="rounded-lg border border-black px-1 font-light" type="text" name="url" id='url_input' placeholder="https://mydomain.org/webpage" size="50" required>
+                <button class="rounded-lg border border-black px-8 bg-gray-200" style="cursor: pointer;" type="submit">Parse</button><br>
+                <label class="font-semibold">Select GS</label>
+                <select class="mt-2 rounded-lg border border-black font-light px-1" name="url_select" onchange="document.querySelector('input[name=url]').value = this.value">
+                    <option value=""> GS URL </option>
+                        {% for url in gs_urls %}
+                        <option value="{{ url }}">{{ url }}</option>
+                        {% endfor %}
+                </select>
+                <br>
+            </form>
+        </div>
+        <div class="mt-4" style="width: 100%; text-align: center;">
             <span id="err_span" style="display: none; color: red; font-size: 14px"><b>[ERROR] {{error if error else ''}}</b></span>  
         </div>
-    </div>
-    <br>
-    <div style="max-width: fit-content; margin: auto; font-size: 18px; text-align: center;">
-        {% if tk_precision %}
-        <b>Token level evaluation results:</b><br>
-        precision: <b>{{ tk_precision | round(3) }}</b>, recall: <b>{{ tk_recall | round(3) }}</b>, f1: <b>{{ tk_f1 | round(3) }}</b>
-        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<i>(target: 1.0)</i><br>
         <br>
-        <b>Length evaluation results:</b><br>
-        Golden chars: <b>{{ l_golden_chars | round(3) }}</b>, Parsed chars: <b>{{ l_parsed_chars | round(3) }}</b>
-        , Golden words: <b>{{ l_golden_words | round(3) }}</b>, Parsed words: <b>{{ l_parsed_words | round(3) }}</b>,
-        Char length ratio: <b>{{ l_char_length_ratio | round(3) }}</b>, Word length ratio: <b>{{ l_word_length_ratio | round(3) }}</b>
-        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<i>(WLR target: 1.0)</i><br>
-        <br>
-        <b><u>NOTE</u>:</b> <i>CLR > 1.0</i> is expected since we are including links in the markdown output.<br>
-        <br>
-        <b>Rouge evaluation results:</b><br>
-        rouge1_f1: <b>{{ rouge1_f1 | round(3) }}</b>, rouge2_f1: <b>{{ rouge2_f1 | round(3) }}</b>, rougeL_f1: <b>{{ rougeL_f1 | round(3) }}</b>
-        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<i>(target: 1.0)</i><br>
-        <br>
-        <b>Bleu evaluation results:</b><br>
-        bleu1: <b>{{ bleu1 | round(3) }}</b>, bleu2: <b>{{ bleu2 | round(3) }}</b>,
-        bleu3: <b>{{ bleu3 | round(3) }}</b>, bleu4: <b>{{ bleu4 | round(3) }}</b>,
-        bleu_avg: <b>{{ bleu_avg | round(3) }}</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<i>(target: 1.0)</i><br>
-        <br>
-        {% else %}
-        <b>Token level evaluation results:</b><br>
-        N/A<br>
-        <br>
-        <b>Length evaluation results:</b><br>
-        N/A<br>
-        <br>
-        <b>Rouge evaluation results:</b><br>
-        N/A<br>
-        <br>
-        <b>Bleu evaluation results:</b><br>
-        N/A<br>
-        {% endif %}
-    </div>
-    <br>
-    <div class="header-div">
-        <div>HTML text</div>
-        <div>Parsed text</div>
-    </div>
-    <div class="result-div">
-        <div class="column">
-        {{html_text if html_text else ''}}
+        {% macro metric_slider(label, val) %}
+        {% set v = (val | default(0)) | float %}
+        {% set distance = (1.0 - v) | abs %}
+        {% set goodness = 1.0 - distance %}
+        {% set goodness = 0 if goodness < 0 else goodness %}
+        {% set hue = (goodness * 120) | round | int %}
+        {% set position = (v * 100) | round(2) %}
+        
+        <div class="mb-3 text-left px-2 text-sm">
+            <div class="flex justify-between items-end mb-1">
+                <span class="font-medium">{{ label }}:</span>
+                <b style="--metric-color: {{ hue }}; color: hsl(var(--metric-color), 85%, 38%);">
+                    {{ v | round(3) }}
+                </b>
+            </div>
+            
+            <div class="h-2 w-full bg-gradient-to-r from-red-500 via-yellow-400 to-green-500 rounded-full relative border border-gray-300">
+                <div class="absolute h-3.5 w-1 bg-black top-[-3px] rounded-sm" 
+                    style="--pos: {{ position }}%; left: clamp(0%, var(--pos), 97%);">
+                </div>
+            </div>
         </div>
-        <div class="column">
-            {{parsed_text if parsed_text else ''}}
+        {% endmacro %}
+        <div class="grid w-[95vw] m-auto grid-cols-4 text-center justify-center bg-white shadow-md border border-black rounded-lg">
+    
+        <div class="p-4 border-r flex flex-col">
+            <b class="mb-4 text-lg">Token level</b>
+            {% if tk_precision %}
+            {{ metric_slider('precision', tk_precision) }}
+            {{ metric_slider('recall', tk_recall) }}
+            {{ metric_slider('f1', tk_f1) }}
+            
+            <div class="mt-auto pt-4 text-xs">
+                <i>(target: 1.0)</i>
+            </div>
+            {% else %}
+            <div class="my-auto">N/A</div>
+            {% endif %}
         </div>
+
+        <div class="p-4 border-r flex flex-col text-sm text-left">
+            <b class="mb-4 text-lg text-center text-base font-bold">Length eval</b>
+            {% if l_golden_chars %}
+            <div class="flex justify-between px-2 border-b border-gray-100 py-1"><span>Golden characters:</span> <b>{{ l_golden_chars | round(3) }}</b></div>
+            <div class="flex justify-between px-2 border-b border-gray-100 py-1"><span>Parsed characters:</span> <b>{{ l_parsed_chars | round(3) }}</b></div>
+            <div class="flex justify-between px-2 border-b border-gray-100 py-1"><span>Golden words:</span> <b>{{ l_golden_words | round(3) }}</b></div>
+            <div class="flex justify-between px-2 border-b border-gray-100 py-1"><span>Parsed words:</span> <b>{{ l_parsed_words | round(3) }}</b></div>
+            <div class="flex justify-between px-2 mb-4 py-1"><span>Character length ratio:</span> <b>{{ l_char_length_ratio | round(3) }}</b></div>
+            
+            {{ metric_slider('Word length ratio', l_word_length_ratio) }}
+            
+            <div class="mt-auto pt-4 text-xs text-center">
+                <b>NOTE:</b> <i>CLR > 1.0</i> is <u>expected</u>, since we are including links in the parser output.
+            </div>
+            {% else %}
+            <div class="my-auto text-center text-base">N/A</div>
+            {% endif %}
+        </div>
+
+        <div class="p-4 border-r flex flex-col">
+            <b class="mb-4 text-lg text-center">Rouge eval</b>
+            {% if rouge1_f1 %}
+            {{ metric_slider('rouge1_f1', rouge1_f1) }}
+            {{ metric_slider('rouge2_f1', rouge2_f1) }}
+            {{ metric_slider('rougeL_f1', rougeL_f1) }}
+            
+            <div class="mt-auto pt-4 text-xs">
+                <i>(target: 1.0)</i>
+            </div>
+            {% else %}
+            <div class="my-auto">N/A</div>
+            {% endif %}
+        </div>
+
+        <div class="p-4 flex flex-col">
+            <b class="mb-4 text-lg text-center">Bleu eval</b>
+            {% if bleu1 %}
+            {{ metric_slider('bleu1', bleu1) }}
+            {{ metric_slider('bleu2', bleu2) }}
+            {{ metric_slider('bleu3', bleu3) }}
+            {{ metric_slider('bleu4', bleu4) }}
+            {{ metric_slider('bleu_avg', bleu_avg) }}
+            
+            <div class="mt-auto pt-4 text-xs">
+                <i>(target: 1.0)</i>
+            </div>
+            {% else %}
+            <div class="my-auto">N/A</div>
+            {% endif %}
+        </div>
+
+        </div>
+            <br>
+            <div class="w-[95vw] m-auto">
+                <div class="grid grid-cols-2 text-center text-3xl">
+                <div class="p-3 font-semibold">
+                    HTML text
+                </div>
+                <div class="p-3 font-semibold">
+                    Parsed text
+                </div>
+                </div>
+                <div class="grid grid-cols-2 divide-x divide-black h-96 border border-black shadow-lg mb-2 text-xsm font-light
+                bg-gray-100 text-justify">
+                <div class="p-2 overflow-y-auto h-full">
+                    {{html_text if html_text else ''}}
+                </div>
+                
+                <div class="p-2 overflow-y-auto h-full">
+                    {{parsed_text if parsed_text else ''}}
+                </div>
+            </div>
+        </div>
+        <br>
     </div>
-    <br>
     <div id="hidden_j2_data" style="display: none;" 
-         data-requested_url = "{{ requested_url }}"
-         data-err = "{{ error }}"
-         >
+        data-requested_url = "{{ requested_url }}"
+        data-err = "{{ error }}"
+        >
     </div>
 </body>
 <script>

@@ -94,12 +94,12 @@ class WikipediaParser(WebParser):
             body_length: int = len(page_markdown)
 
             if (WebParser.get_debug()):
-                print(f"[WebParser] Original HTML file length (in characters): {len(result.html)}")
+                print(f"[WikipediaParser] Original HTML file length (in characters): {len(result.html)}")
 
             if (WebParser.get_debug()):
-                print(f"[WebParser] Successfully webpage titled '{webpage_title}' for a total of {body_length} characters.")
+                print(f"[WikipediaParser] Successfully parsed webpage titled '{webpage_title}' for a total of {body_length} characters.")
                 if (self.md_gen_opt.get("ignore_links")):
-                    print("[WebParser] | [WARNING] Links are currently being ignored! To change this behaviour, set 'ignore_links' in MARKDOWN_GEN_OPTIONS to False.")
+                    print("[WikipediaParser] | [WARNING] Links are currently being ignored! To change this behaviour, set 'ignore_links' in MARKDOWN_GEN_OPTIONS to False.")
 
             raw_html: str = result.html # original page HTML content
             domain: str = url.split('/')[2]
