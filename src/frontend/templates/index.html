@@ -50,7 +50,7 @@
                 <label class="font-semibold">URL: </label>
                 <input class="rounded-lg border border-black px-1 font-light" type="text" name="url" id='url_input' placeholder="https://mydomain.org/webpage" size="50" required>
                 <button class="rounded-lg border border-black px-8 bg-gray-200" style="cursor: pointer;" type="submit">Parse</button><br>
-                <label class="font-semibold">Select GS</label>
+                <label class="font-semibold">Select GS: </label>
                 <select class="mt-2 rounded-lg border border-black font-light px-1" name="url_select" onchange="document.querySelector('input[name=url]').value = this.value">
                     <option value=""> GS URL </option>
                         {% for url in gs_urls %}
@@ -90,7 +90,7 @@
         <div class="grid w-[95vw] m-auto grid-cols-4 text-center justify-center bg-white shadow-md border border-black rounded-lg">
     
         <div class="p-4 border-r flex flex-col">
-            <b class="mb-4 text-lg">Token level</b>
+            <b class="mb-4 text-lg">Token level eval</b>
             {% if tk_precision %}
             {{ metric_slider('precision', tk_precision) }}
             {{ metric_slider('recall', tk_recall) }}
