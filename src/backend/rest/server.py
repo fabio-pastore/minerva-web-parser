@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from fastapi import FastAPI, HTTPException, Path
 from src.parser.WebParser import WebParser
 from src.parser.WikipediaParser import WikipediaParser
+from src.parser.MarvelParser import MarvelParser
 from rest.evaluation import *
 
 URL_REGEX: str = "^https?:\\/\\/(?:www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b(?:[-a-zA-Z0-9()@:%_\\+.~#?&\\/=]*)$"
@@ -12,13 +13,15 @@ app = FastAPI()
 print("[API-SERVER] Initializing...")
 
 wiki_parser : WebParser = WikipediaParser() # initialize parser on server startup to reduce overhead, instead of doing it for each parse request
+marvel_parser : WebParser = MarvelParser()
 parse_handler: dict[str, WebParser] = {}
 
 for domain in WebParser.get_supported_domains():
     match (domain):
         case d if (d == WikipediaParser.get_supported_domain()):
             parse_handler[domain] = wiki_parser # assign parse handle to WikipediaParser object
-    # for each domain... TODO: add new parsers when available
+        case d if (d == MarvelParser.get_supported_domain()):
+            parse_handler[domain] = marvel_parser
         case _:
             print(f"[API-SERVER] Could not find suitable parser for domain '{domain}'")
 
