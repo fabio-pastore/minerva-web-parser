@@ -3,8 +3,8 @@ from crawl4ai import DefaultMarkdownGenerator, AsyncWebCrawler, CrawlResult
 
 class RaiPlaySoundParser(WebParser):
 
-    __SUPPORTED_DOMAIN: str = 'raiplaysound.it'
-    __TAG_EXCLUSIONS: list[str] = ['style', 'script', 'noscript', 'figure', 'meta', 'img', 'svg', 'rps-filters', 'rps-playlist-action', 'video', 'rps-popup', 'rps-related', 'rps-play']
+    __SUPPORTED_DOMAIN: str = 'www.raiplaysound.it'
+    __TAG_EXCLUSIONS: list[str] = ['style', 'script', 'noscript', 'figure', 'meta', 'img', 'svg', 'rps-filters', 'rps-playlist-action', 'video', 'rps-popup', 'rps-related', 'rps-play', 'rps-player', 'rps-skiplink']
     __TARGETS: list[str] = ['.main']
 
     __MARKDOWN_GEN_OPTIONS: dict[str, bool] = {
@@ -14,9 +14,18 @@ class RaiPlaySoundParser(WebParser):
     }
 
     __CSS_EXCLUSIONS: str = '''
-    .more-info, .banner-buttons, .fascia__filtri, .fascia__filtri__wrapper, .filtro, .custom-scrollbar, .filtro__close, .rai-custom-panel, .rai-custom-bkg-panel,
-    .rai-custom-adv-player-wrapper, .vjs-poster, .vjs-title-bar, .vjs-hidden, .vjs-text-track-display, .vjs-loading-spinner, .vjs-big-play-button, .vjs-control-bar,
-    .rai-custom-main-control-bar, .vjs-error-display, .vjs-modal-dialog, .rai-custom-secondary-control-bar, .rai-custom-info-display-image, .lg:hidden
+    .more-info, .banner-buttons, .fascia__filtri, .fascia__filtri__wrapper, .filtro, .custom-scrollbar, .filtro__close, .lg\\:hidden, .fascia__title, .skip-link
+    '''
+
+    '''
+    TODO: add css and tag exclusions for dynamic pages like:
+    https://www.raiplaysound.it/radio1
+    https://www.raiplaysound.it/radio1/palinsesto
+    https://www.raiplaysound.it/radio1/podcast
+    https://www.raiplaysound.it/dirette
+
+    it is impossible to write a GS for these pages, since their content is dynamically generated and changes over time,
+    but we can still try to parse them by excluding the right tags and css selectors
     '''
     
     def __init__(self):
