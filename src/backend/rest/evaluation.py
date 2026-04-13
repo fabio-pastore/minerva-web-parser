@@ -57,7 +57,7 @@ def sanitize_markdown(raw_text: str) -> str:
     punctuation_remover: dict = str.maketrans({char: ' ' for char in string.punctuation})
     phonetic_sym_remover: dict = str.maketrans({char: '' for char in PHONETIC_SYMBOLS}) # extremely niche applications, still useful for edge cases
     out_text: str = re.sub(r'\[\[[[0-9]+\]\]', ' ', raw_text) # remove markdown unlinked notes
-    out_text = re.sub(r'\*\*\*|\*\*|\*|~~', '', out_text) 
+    out_text = re.sub(r'\*\*\*|\*\*|\*|~~', ' ', out_text) 
     """
     The previous regex removes markdown formatting in particular cases where we would otherwise incorrectly split tokens, losing accuracy 
     (NOTE: this is possible only if the word is in the form "a[bold(b)]" and not "a[bold(b)]a", since in markdown the latter is translated as a**b** a)

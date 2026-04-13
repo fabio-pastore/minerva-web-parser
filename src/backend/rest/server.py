@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from fastapi import FastAPI, HTTPException, Path
 from src.parser.WebParser import WebParser
 from src.parser.WikipediaParser import WikipediaParser
+from src.parser.IpsosParser import IpsosParser
 from src.parser.RaiPlaySoundParser import RaiPlaySoundParser
 from rest.evaluation import *
 
@@ -12,6 +13,9 @@ URL_REGEX: str = "^https?:\\/\\/(?:www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-z
 app = FastAPI()
 print("[API-SERVER] Initializing...")
 
+# initialize parsers on server startup to reduce overhead, instead of doing it for each parse request
+wiki_parser : WebParser = WikipediaParser() 
+ipsos_parser : IpsosParser = IpsosParser()
 wiki_parser : WebParser = WikipediaParser() # initialize parser on server startup to reduce overhead, instead of doing it for each parse request
 rai_parser : WebParser = RaiPlaySoundParser()
 
@@ -21,6 +25,8 @@ for domain in WebParser.get_supported_domains():
     match (domain):
         case d if (d == WikipediaParser.get_supported_domain()):
             parse_handler[domain] = wiki_parser # assign parse handle to WikipediaParser object
+        case d if (d == IpsosParser.get_supported_domain()):
+            parse_handler[domain] = ipsos_parser # assign parse handle to IpsosParser object 
         case d if (d == RaiPlaySoundParser.get_supported_domain()):
             parse_handler[domain] = rai_parser # assign parse handle to RaiPlaySoundParser object
             
