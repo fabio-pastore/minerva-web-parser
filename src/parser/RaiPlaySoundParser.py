@@ -4,7 +4,8 @@ from crawl4ai import DefaultMarkdownGenerator, AsyncWebCrawler, CrawlResult
 class RaiPlaySoundParser(WebParser):
 
     __SUPPORTED_DOMAIN: str = 'www.raiplaysound.it'
-    __TAG_EXCLUSIONS: list[str] = ['style', 'script', 'noscript', 'figure', 'meta', 'img', 'svg', 'rps-filters', 'rps-playlist-action', 'video', 'rps-popup', 'rps-related', 'rps-play', 'rps-player', 'rps-skiplink']
+    __TAG_EXCLUSIONS: list[str] = ['style', 'script', 'noscript', 'figure', 'meta', 'img', 'svg', 'rps-filters', 'rps-playlist-action',\
+                                    'video', 'rps-popup', 'rps-related', 'rps-play', 'rps-player', 'rps-skiplink', 'rps-live']
     __TARGETS: list[str] = ['.main']
 
     __MARKDOWN_GEN_OPTIONS: dict[str, bool] = {
@@ -14,11 +15,12 @@ class RaiPlaySoundParser(WebParser):
     }
 
     __CSS_EXCLUSIONS: str = '''
-    .more-info, .banner-buttons, .fascia__filtri, .fascia__filtri__wrapper, .filtro, .custom-scrollbar, .filtro__close, .lg\\:hidden, .fascia__title, .skip-link
+    .more-info, .banner-buttons, .fascia__filtri, .fascia__filtri__wrapper, .filtro, .custom-scrollbar, .filtro__close, .lg\\:hidden, .fascia__title, .skip-link,
+    .card-list__button, .calendar, .hidden, .card-image, .sidekick__buttons
     '''
 
     '''
-    TODO: add css and tag exclusions for dynamic pages like:
+    NOTE: also added css and tag exclusions for dynamic pages like:
     https://www.raiplaysound.it/radio1
     https://www.raiplaysound.it/radio1/palinsesto
     https://www.raiplaysound.it/radio1/podcast
