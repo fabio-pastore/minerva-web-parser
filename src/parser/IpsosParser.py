@@ -6,13 +6,15 @@ import json
 class IpsosParser(WebParser):
 
     __SUPPORTED_DOMAIN: str = 'www.ipsos.com'
-    __TAG_EXCLUSIONS: list[str] = ['style', 'script', 'noscript', 'figure', 'meta', 'footer', 'header', 'nav']
+    __TAG_EXCLUSIONS: list[str] = ['style', 'script', 'noscript', 'figure', 'meta', 'footer', 'header', 'nav', 'svg', 'iframe']
     __TARGETS: list[str] = ['.hero__title', '.hero__description', '.block-publications-content']
     __MIN_PARSE_LENGTH: int = 500
     __UNWANTED_HEADERS: list[str] = [r"Ipsos,\s+sondaggi\s+e\s+ricerche"]
     __MARKDOWN_REGEX: str = r"##\s+(?:\*\*|)\s*(?:" + "|".join(__UNWANTED_HEADERS) + r").*?[\s\S]*?(?=\n##|$)"
     __NEWSLETTER_REGEX: str = r"(^.*Newsletter.*$)"
+
     __PAGE_END_CONTACT_MESSAGES_EU: list[str] = [
+
         r"Per\s+maggiori\s+informazioni",                   # IT
         r"Per\s+domande\s+dei\s+media",                     # IT
         r"For\s+more\s+information",                        # EN
@@ -24,17 +26,41 @@ class IpsosParser(WebParser):
         r"Para\s+más\s+información",                        # ES
         r"Para\s+consultas\s+de\s+medios",                  # ES
         r"Для\s+получения\s+дополнительной\s+информации",   # RU
-        r"Вопросы\s+для\s+СМИ"                              # RU
+        r"Вопросы\s+для\s+СМИ"    
+                                                            # RU
     ]
 
+    __PAGE_END_SOCIAL_MESSAGES_EU: list[str] = [ 
+    
+    r"Seguit?eci\s+su(?:i\s+social)?",                      # IT 
+    r"Seguici\s+sui\s+nostri\s+canali",                     # IT
+    r"Follow\s+us\s+on\s+social",                           # EN
+    r"Follow\s+our\s+social",                               # EN
+    r"Connect\s+with\s+us\s+on",                            # EN
+    r"Folgen\s+Sie\s+uns\s+auf",                            # DE
+    r"Folgt\s+uns\s+auf",                                   # DE
+    r"Besuchen\s+Sie\s+uns\s+auf",                          # DE
+    r"Suivez-nous\s+sur",                                   # FR
+    r"Retrouvez-nous\s+sur",                                # FR
+    r"S[íi]guenos\s+en\s+redes",                            # ES             
+    r"S[íi]guenos\s+en\s+nuestras",                         # ES
+    r"Conecta\s+con\s+nosotros\s+en",                       # ES
+    r"Подписывайтесь\s+на\s+наш",                           # RU         
+    r"Следите\s+за\s+нами\s+в"                              # RU    
+              
+]
+
     __MAX_INTER_CHARS: int = 64
-    __MIN_CONTACT_INFO_INDEX_LENGTH_RATIO: float = 0.6 # truncates the second part of the regex match if and only if we have read at least 60% of the page length 
-    __CONTACT_REGEX : str = rf"(?:(?:-\s*){{3,}}|(?:\*\s*){{3,}}|(?:_\s*){{3,}})[\s\S]{{0,{__MAX_INTER_CHARS}}}?(?:" + "|".join(__PAGE_END_CONTACT_MESSAGES_EU) + r")[\s\S]*$"
+    __MIN_TAIL_REMOVAL_INDEX_LENGTH_RATIO: float = 0.75 # truncates the second part of the regex match if and only if we have read at least 75% of the page length 
+    __TAIL_EXCLUSIONS: list[str] = __PAGE_END_CONTACT_MESSAGES_EU + __PAGE_END_SOCIAL_MESSAGES_EU
+    __TAIL_REGEX : str = rf"(?:(?:-\s*){{3,}}|(?:\*\s*){{3,}}|(?:_\s*){{3,}})[\s\S]{{0,{__MAX_INTER_CHARS}}}?(?:" + "|".join(__TAIL_EXCLUSIONS) + r")[\s\S]*$"
     """
-    We use this regex as a resort in attempting to remove contact information at the end of articles, if not inserted in a '.block-contact' or '.block-authors' div.
-    Obviously, if the contact information is written in a slightly different manner, the parser is unable to remove the additional information, lowering
-    the parse output quality. This might happen and is unavoidable. Common expressions for the most popular EU languages are used in the REGEX.
+    We use this regex as a last resort in attempting to remove contact information/social media advertisements at the end of articles, if not inserted in 
+    a '.block-contact' or '.block-authors' div. Obviously, if the contact information is written in a slightly different manner, the parser is unable to 
+    remove the additional information, lowering the parse output quality. This might happen and is unavoidable. Common expressions for the most popular EU 
+    languages are used in the regex.
     """
+
     __ORDINALS_REGEX: str = r"(\d+)\s+(st|nd|rd|th)\b"
 
     __MARKDOWN_GEN_OPTIONS: dict[str, bool] = {
@@ -43,7 +69,8 @@ class IpsosParser(WebParser):
         'ignore_links': False # we must include links in .md
     }
 
-    __CSS_EXCLUSIONS: str = '''.btn, .btn-cta, .btn-primary, .btn-secondary, .btn-external .contact-cards, 
+    __CSS_EXCLUSIONS: str = '''
+    .btn, .btn-cta, .btn-primary, .btn-secondary, .btn-external .contact-cards, 
     .block-publications-list, .block-contact, .block-toolbar, .block-authors, .business-contact, .flourish-credit, 
     .quote-block--card, .quote-block__info, .hero__breadcrumbs, .simple-push, .simple-push__content, .highlights__item, 
     .hero__tags, .hero__date, .hero__share, .form-content
@@ -78,10 +105,10 @@ class IpsosParser(WebParser):
         """
         original_len: int = len(md)
         
-        re_match: re.Match[str] | None = re.search(IpsosParser.__CONTACT_REGEX, md, flags=re.IGNORECASE | re.MULTILINE)
+        re_match: re.Match[str] | None = re.search(IpsosParser.__TAIL_REGEX, md, flags=re.IGNORECASE | re.MULTILINE)
         if (re_match):
             index_match: int = re_match.start()
-            if (index_match > IpsosParser.__MIN_CONTACT_INFO_INDEX_LENGTH_RATIO * original_len):
+            if (index_match > IpsosParser.__MIN_TAIL_REMOVAL_INDEX_LENGTH_RATIO * original_len):
                 md: str = md[:index_match]
 
         re_match: re.Match[str] | None = re.search(IpsosParser.__MARKDOWN_REGEX, md, flags=re.IGNORECASE)
@@ -92,6 +119,8 @@ class IpsosParser(WebParser):
         md = re.sub(IpsosParser.__NEWSLETTER_REGEX, "", md, flags=re.IGNORECASE | re.MULTILINE)
         md = re.sub(IpsosParser.__ORDINALS_REGEX, "\1\2", md, flags=re.IGNORECASE) # join erroneously separated tokens during HTML to Markdown conversion (e.g. '3' and 'rd') 
         md = re.sub(r'[\x00-\x1F\x7F]', ' ', md) # remove leftover control characters from failed HTML parse, which may happen in rare occasions
+        md = re.sub(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}", "[EMAIL REMOVED]", md) # remove emails for privacy
+        md = re.sub(r"\+?\d[\d\s-]{8,}\d", "[PHONE REMOVED]", md) # remove phone numbers for privacy
         # make these last lines a classmethod in WebParser? 
         md: str = json.dumps(md, ensure_ascii=False) # escape markdown string for JSON (also adds double quotes at the beginning and end of the string, which will be removed in the final output)
         if len(md) >= 2:
@@ -138,13 +167,13 @@ class IpsosParser(WebParser):
             if (body_length < IpsosParser.__MIN_PARSE_LENGTH):
                 if (not fallback):
                     if (WebParser.get_debug()):
-                        print(f"[IpsosParser] Initializing fallback parse, since obtained content length was of only {body_length} characters (MIN_PARSE_LENGTH: {IpsosParser.__MIN_PARSE_LENGTH}).")
+                        print(f"[IpsosParser] | [WARNING] Initializing fallback parse, since obtained content length was of only {body_length} characters (MIN_PARSE_LENGTH: {IpsosParser.__MIN_PARSE_LENGTH}).")
                     # we dynamically modify the parser config to include the entire page and recursively call parse_url() 
                     return await self.parse_url(url, fallback=True, updated_conf=self.crawler_cfg.clone(target_elements = ['.hero__title', '.hero__description', 'main'])) 
                 else: 
                     # this was already a fallback parse, return data anyway but display warning
                     if (WebParser.get_debug()):
-                        print("[IpsosParser] | [WARNING] Fallback parse completed successfully but extracted content is still under the minimum threshold. Is the article short?")
+                        print("[IpsosParser] | [WARNING] Fallback parse completed successfully but extracted content is still under the minimum threshold. Is this article short?")
 
             if (WebParser.get_debug()):
                 print(f"[IpsosParser] Original HTML file length (in characters): {len(result.html)}")
