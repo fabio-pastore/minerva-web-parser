@@ -5,6 +5,7 @@ from fastapi import FastAPI, HTTPException, Path
 from src.parser.WebParser import WebParser
 from src.parser.WikipediaParser import WikipediaParser
 from src.parser.IpsosParser import IpsosParser
+from src.parser.RaiPlaySoundParser import RaiPlaySoundParser
 from rest.evaluation import *
 
 URL_REGEX: str = "^https?:\\/\\/(?:www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b(?:[-a-zA-Z0-9()@:%_\\+.~#?&\\/=]*)$"
@@ -15,6 +16,9 @@ print("[API-SERVER] Initializing...")
 # initialize parsers on server startup to reduce overhead, instead of doing it for each parse request
 wiki_parser : WebParser = WikipediaParser() 
 ipsos_parser : IpsosParser = IpsosParser()
+wiki_parser : WebParser = WikipediaParser() # initialize parser on server startup to reduce overhead, instead of doing it for each parse request
+rai_parser : WebParser = RaiPlaySoundParser()
+
 parse_handler: dict[str, WebParser] = {}
 
 for domain in WebParser.get_supported_domains():
@@ -23,6 +27,9 @@ for domain in WebParser.get_supported_domains():
             parse_handler[domain] = wiki_parser # assign parse handle to WikipediaParser object
         case d if (d == IpsosParser.get_supported_domain()):
             parse_handler[domain] = ipsos_parser # assign parse handle to IpsosParser object 
+        case d if (d == RaiPlaySoundParser.get_supported_domain()):
+            parse_handler[domain] = rai_parser # assign parse handle to RaiPlaySoundParser object
+            
     # for each domain... TODO: add new parsers when available
         case _:
             print(f"[API-SERVER] Could not find suitable parser for domain '{domain}'")
@@ -245,6 +252,3 @@ async def full_gs_eval(domain: str) -> ParseEvaluation:
 
     return ParseEvaluation(token_level_eval=full_token_eval, length_eval= full_length_eval, \
                            rouge_eval= full_rouge_eval, bleu_eval= full_bleu_eval)
-
-
-    
