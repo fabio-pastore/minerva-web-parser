@@ -1,7 +1,6 @@
 from src.parser.WebParser import WebParser
 from crawl4ai import DefaultMarkdownGenerator, AsyncWebCrawler, CrawlResult, CrawlerRunConfig
 import regex as re
-import json
 
 class IpsosParser(WebParser):
 

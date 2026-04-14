@@ -7,7 +7,7 @@ from src.parser.WikipediaParser import WikipediaParser
 from src.parser.MarvelParser import MarvelParser
 from src.parser.IpsosParser import IpsosParser
 from src.parser.RaiPlaySoundParser import RaiPlaySoundParser
-from rest.evaluation import *
+from src.evaluation.evaluation import *
 
 URL_REGEX: str = "^https?:\\/\\/(?:www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b(?:[-a-zA-Z0-9()@:%_\\+.~#?&\\/=]*)$"
 

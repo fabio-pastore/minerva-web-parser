@@ -2,7 +2,6 @@ from src.parser.WebParser import WebParser
 from crawl4ai import DefaultMarkdownGenerator, AsyncWebCrawler, CrawlResult
 from bs4 import BeautifulSoup
 import regex as re
-import json
 class WikipediaParser(WebParser):
 
     __SUPPORTED_DOMAIN: str = 'it.wikipedia.org'
