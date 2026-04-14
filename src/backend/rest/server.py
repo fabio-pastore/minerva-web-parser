@@ -12,7 +12,7 @@ from rest.evaluation import *
 URL_REGEX: str = "^https?:\\/\\/(?:www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b(?:[-a-zA-Z0-9()@:%_\\+.~#?&\\/=]*)$"
 
 app = FastAPI()
-print("[API-SERVER] Initializing...")
+print("[API-SERVER] | [INFO] Initializing...")
 
 # initialize parsers on server startup to reduce overhead, instead of doing it for each parse request
 wiki_parser : WebParser = WikipediaParser() 
@@ -33,7 +33,7 @@ for domain in WebParser.get_supported_domains():
         case d if (d == RaiPlaySoundParser.get_supported_domain()):
             parse_handler[domain] = rai_parser # assign parse handle to RaiPlaySoundParser object
         case _:
-            print(f"[API-SERVER] Could not find suitable parser for domain '{domain}'")
+            print(f"[API-SERVER] | [ERROR] Could not find suitable parser for domain '{domain}'")
 
 class ParseOutput(BaseModel):
     url: str
@@ -84,16 +84,21 @@ async def parse_url(url: str = Path(...)) -> ParseOutput:
     Raises:
         HTTPException: If the URL is malformed, the domain is unsupported, or the URL is unreachable.
     """
-    print(f"[API-SERVER] Received parsing request for URL: {url}")
+    print(f"[API-SERVER] | [INFO] Received parsing request for URL: {url}")
+
     if not (re.match(URL_REGEX, url) and url.count("/") >= 3):
         raise HTTPException(status_code=400, detail="malformed URL")
+    
     domain_to_parse: str = url.split("/")[2]
-    print(f"[API-SERVER] Extracted domain from URL: {domain_to_parse}")
+    print(f"[API-SERVER] | [INFO] Extracted domain from URL: {domain_to_parse}")
+
     if domain_to_parse not in WebParser.get_supported_domains():
         raise HTTPException(status_code=400, detail="domain not supported")
+    
     parse_output: dict[str, str] = await parse_handler[domain_to_parse].parse_url(url)
     if (len(parse_output) == 0):
         raise HTTPException(status_code=400, detail="unreachable URL")
+    
     return ParseOutput(url=parse_output.get("url"), domain=parse_output.get("domain"), title=parse_output.get("title"),
                        html_text=parse_output.get("html_text"), parsed_text=parse_output.get("parsed_text"))
 
@@ -128,13 +133,17 @@ def get_gold_standard(url: str = Path(...)) -> GSEntry:
     domain: str = url.split("/")[2]
     if not (re.match(URL_REGEX, url) and url.count("/") >= 3):
         raise HTTPException(status_code=400, detail="malformed URL")
+    
     if domain not in WebParser.get_supported_domains():
         raise HTTPException(status_code=400, detail="domain not supported")
+    
     file_path: str = f"gs_data/" + domain.replace(".", "_") + "_gs.json"     # not src/ anymore for docker
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="gold standard not found for the given URL")
+    
     with open(file=file_path, mode='r', encoding='UTF-8') as fin:
         data: dict = json.load(fin)
+
     for entry in data:
         if entry.get("url") == url:
             return GSEntry(url=entry.get("url"), domain=entry.get("domain"), title=entry.get("title"),
@@ -158,9 +167,12 @@ def get_all_golden_standard_domain(domain: str) -> ListGSEntry:
     """
     if domain not in WebParser.get_supported_domains():
         raise HTTPException(status_code=400, detail="domain not supported")
+    
     file_path: str = "gs_data/" + domain.replace(".", "_") + "_gs.json" # same as above
+
     with open(file_path, mode='r', encoding='UTF-8') as fin:
         data: dict = json.load(fin)
+
     return ListGSEntry(gold_standard=data)
 
 @app.post("/evaluate")
@@ -207,7 +219,8 @@ async def full_gs_eval(domain: str) -> ParseEvaluation:
     
     evals: list[ParseEvaluation] = []
     gs: dict[str, str] = {}
-    file_path: str = "gs_data/" + domain.replace(".", "_") + "_gs.json" #same
+    file_path: str = "gs_data/" + domain.replace(".", "_") + "_gs.json" # same
+
     with open(file_path, mode='r', encoding='UTF-8') as fin:
         data: dict = json.load(fin)
         for entry in data:
@@ -216,7 +229,6 @@ async def full_gs_eval(domain: str) -> ParseEvaluation:
     for url in gs.keys():
         output: ParseOutput = await parse_url(url)
         parsed_text: str = output.parsed_text
-
         evals.append(evaluate_parsing(EvaluationInput(parsed_text=parsed_text, gold_text=gs.get(url))))
     
     #extract and divide evals into types

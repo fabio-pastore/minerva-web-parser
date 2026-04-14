@@ -8,7 +8,6 @@ class MarvelParser(WebParser):
 
     __SUPPORTED_DOMAIN: str = 'www.marvel.com'
     __TAG_EXCLUSIONS: list[str] = ['style', 'script', 'noscript', 'figure', 'meta', 'img', 'svg', 'iframe']
-    __TARGETS: list[str] = []
     __MARKDOWN_REGEX: str = r"##\s+(?:Gallery|Latest News|Buy Now|Posters|Featured Video|Big Game Trailer|Related Movie|Prepare|Teaser Trailer|Official Trailer|Final Trailer|Your Privacy Settings|Additional Links|.*?Will Return)"
     # Truncate after Overview section at the next boilerplate section heading
 
@@ -29,13 +28,13 @@ class MarvelParser(WebParser):
 
     def __init__(self):
         # Override browser config for Marvel's anti-bot protection
-        self.browser_cfg = BrowserConfig(
+        self.browser_cfg: BrowserConfig = BrowserConfig(
             headless=True,
             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
             text_mode=True,
         )
-        self.md_gen_opt = MarvelParser.__MARKDOWN_GEN_OPTIONS
-        self.crawler_cfg = CrawlerRunConfig(
+        self.md_gen_opt: dict[str, bool] = MarvelParser.__MARKDOWN_GEN_OPTIONS
+        self.crawler_cfg: CrawlerRunConfig = CrawlerRunConfig(
             excluded_tags=MarvelParser.__TAG_EXCLUSIONS,
             markdown_generator=DefaultMarkdownGenerator(options=MarvelParser.__MARKDOWN_GEN_OPTIONS),
             excluded_selector=MarvelParser.__CSS_EXCLUSIONS,
@@ -76,30 +75,27 @@ class MarvelParser(WebParser):
             str: The cleaned and sanitized markdown string.
         """
         # only overwiew section
-        overview_match = re.search(r'(?:^|\n)Overview\s*\n', md, flags=re.IGNORECASE)
+        overview_match: re.Match[str] | None = re.search(r'(?:^|\n)Overview\s*\n', md, flags=re.IGNORECASE)
         if overview_match:
-            md = md[overview_match.start():]
+            md: str = md[overview_match.start():]
         
-        end_match = re.search(MarvelParser.__MARKDOWN_REGEX, md, flags=re.IGNORECASE)
+        end_match: re.Match[str] | None = re.search(MarvelParser.__MARKDOWN_REGEX, md, flags=re.IGNORECASE)
         if end_match:
-            md = md[:end_match.start()]
+            md: str = md[:end_match.start()]
 
         # to remove image
-        md = re.sub(r'!\[.*?\]\(.*?\)\s*\n?', '', md)
+        md: str = re.sub(r'!\[.*?\]\(.*?\)\s*\n?', '', md)
 
         # for empty links
-        md = re.sub(r'\[\]\(.*?\)\s*\n?', '', md)
+        md: str = re.sub(r'\[\]\(.*?\)\s*\n?', '', md)
 
         for label in MarvelParser.__SECTION_LABELS:
-            md = re.sub(r'(?:^|\n)\s*' + re.escape(label) + r'\s*\n', f'\n## {label}\n', md)
+            md: str = re.sub(r'(?:^|\n)\s*' + re.escape(label) + r'\s*\n', f'\n## {label}\n', md)
 
         # insert movie title as h1 heading that i get from title tag truncated at |
-        md = f"# {title}\n" + md.strip() + "\n"
-        md = json.dumps(md, ensure_ascii=False)
-        if len(md) >= 2:
-            md = md[1:-1]  # remove double quotes from json.dumps()
+        md: str = f"# {title}\n" + md.strip() + "\n"
 
-        return md
+        return WebParser.json_convert(md) 
 
     async def parse_url(self, url: str) -> dict[str, str]:
         """

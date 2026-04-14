@@ -52,6 +52,22 @@ class WebParser(ABC):
     @classmethod
     def get_debug(cls) -> bool:
         return cls.__DEBUG
+    
+    @classmethod
+    def json_convert(cls, in_ : str) -> str:
+        """
+        Seralizes input string to JSON compatible string.
+
+        Args:
+            in_ (str): the string to seralize
+
+        Returns:
+            str: seralized, JSON compatible string
+        """
+        out: str = json.dumps(in_, ensure_ascii=False) # escape markdown string for JSON
+        if len(out) >= 2:
+            out: str = out[1:-1] # remove double quotes from json.dumps()
+        return out
         
     @abstractmethod
     async def parse_url(self, url: str) -> dict[str, str]:

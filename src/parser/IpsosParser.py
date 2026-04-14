@@ -116,16 +116,13 @@ class IpsosParser(WebParser):
             index_match: int = re_match.start()
             md: str = md[:index_match]
 
-        md = re.sub(IpsosParser.__NEWSLETTER_REGEX, "", md, flags=re.IGNORECASE | re.MULTILINE)
-        md = re.sub(IpsosParser.__ORDINALS_REGEX, "\1\2", md, flags=re.IGNORECASE) # join erroneously separated tokens during HTML to Markdown conversion (e.g. '3' and 'rd') 
-        md = re.sub(r'[\x00-\x1F\x7F]', ' ', md) # remove leftover control characters from failed HTML parse, which may happen in rare occasions
-        md = re.sub(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}", "[EMAIL REMOVED]", md) # remove emails for privacy
-        md = re.sub(r"\+?\d[\d\s-]{8,}\d", "[PHONE REMOVED]", md) # remove phone numbers for privacy
-        # make these last lines a classmethod in WebParser? 
-        md: str = json.dumps(md, ensure_ascii=False) # escape markdown string for JSON (also adds double quotes at the beginning and end of the string, which will be removed in the final output)
-        if len(md) >= 2:
-            md: str = md[1:-1] # remove double quotes from json.dumps()
-        return md 
+        md: str = re.sub(IpsosParser.__NEWSLETTER_REGEX, "", md, flags=re.IGNORECASE | re.MULTILINE)
+        md: str = re.sub(IpsosParser.__ORDINALS_REGEX, "\1\2", md, flags=re.IGNORECASE) # join erroneously separated tokens during HTML to Markdown conversion (e.g. '3' and 'rd') 
+        md: str = re.sub(r'[\x00-\x1F\x7F]', ' ', md) # remove leftover control characters from failed HTML parse, which may happen in rare occasions
+        md: str = re.sub(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}", "[EMAIL REMOVED]", md) # remove emails for privacy
+        md: str = re.sub(r"\+?\d[\d\s-]{8,}\d", "[PHONE REMOVED]", md) # remove phone numbers for privacy
+        
+        return WebParser.json_convert(md) 
     
     async def parse_url(self, url: str, **kwargs) -> dict[str, str]:
         """

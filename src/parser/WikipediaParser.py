@@ -56,10 +56,8 @@ class WikipediaParser(WebParser):
         if (re_match):
             index_match: int = re_match.start()
             md: str = md[:index_match]
-        md: str = json.dumps(md, ensure_ascii=False) # escape markdown string for JSON (also adds double quotes at the beginning and end of the string, which will be removed in the final output)
-        if len(md) >= 2:
-            md: str = md[1:-1] # remove double quotes from json.dumps()
-        return md
+            
+        return WebParser.json_convert(md) 
     
     async def parse_url(self, url: str) -> dict[str, str]:
         """
