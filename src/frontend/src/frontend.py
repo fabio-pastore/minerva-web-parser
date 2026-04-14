@@ -66,9 +66,9 @@ def report_error(request: Request, name: str, code: int, err_msg: str) -> _Templ
     Returns:
         _TemplateResponse: The rendered HTML template containing the error details.
     """ 
-    return templates.TemplateResponse(request=request, name=name, context={"request": request, "error": f"{err_msg} ({code})", "gs_urls": get_gs_urls(request, "index.html")})
+    return templates.TemplateResponse(request=request, name=name, context={"request": request, "error": f"{err_msg} ({code})", "gs_data": get_gs_urls(request, "index.html")})
 
-def get_gs_urls(request: Request, name: str) -> list[str]:
+def get_gs_urls(request: Request, name: str) -> dict[str, str]:
     """
     Retrieves a list of all Gold Standard URLs from the backend API.
 
@@ -83,16 +83,17 @@ def get_gs_urls(request: Request, name: str) -> list[str]:
         list[str]: A list of URLs for which a gold standard exists. Returns an error template if API calls fail.
     """
     domains_data: tuple[dict, int, bool] = get_data(API_BACKEND_URL + "/domains")
-    gs_urls: list[str] = []
+    gs_domains_urls: dict[str, str] = {}
     if domains_data.get("response_ok") and "domains" in domains_data.get("response_data"):
         for domain in domains_data.get("response_data").get("domains"):
+            gs_domains_urls[domain] = []
             gs_data: dict = get_data(API_BACKEND_URL + f"/full_gold_standard/{domain}")
             if (gs_data.get("response_ok") and "gold_standard" in gs_data.get("response_data")):
                 for e in gs_data.get("response_data").get("gold_standard"):
-                    gs_urls.append(e["url"])
+                    gs_domains_urls[domain].append((e["url"]))
             else: return report_error(request, name, code=gs_data.get("status_code"), err_msg=f"Failed to retrieve full gold standard for domain {domain}: {gs_data.get("response_data").get("detail")}")
     else: return report_error(request, name, code=gs_data.get("status_code"), err_msg=f"Failed to retrieve list of domains from API server: {gs_data.get("response_data").get("detail")}")
-    return gs_urls
+    return gs_domains_urls
 
 @app.get("/")
 def get_index(request: Request) -> _TemplateResponse:
@@ -105,7 +106,7 @@ def get_index(request: Request) -> _TemplateResponse:
     Returns:
         _TemplateResponse: The rendered 'index.html' template populated with gold standard URLs.
     """
-    return templates.TemplateResponse(name="index.html", request=request, context={"request": request, "gs_urls": get_gs_urls(request, "index.html")})
+    return templates.TemplateResponse(name="index.html", request=request, context={"request": request, "gs_data": get_gs_urls(request, "index.html")})
 
 @app.post("/parse_url_evaluate_perf")
 def parse_url_evaluate_performance(request: Request, url: str = Form(...)) -> _TemplateResponse:
@@ -147,7 +148,7 @@ def parse_url_evaluate_performance(request: Request, url: str = Form(...)) -> _T
         # this is not necessarily an error, we simply might not have a GS for a requested URL
         gs_not_found = True
     
-    context_dict: dict[str, any] = {"request": request, "html_text": html_text, "parsed_text": parsed_text, "requested_url": url, "gs_urls": get_gs_urls(request, "index.html")}
+    context_dict: dict[str, any] = {"request": request, "html_text": html_text, "parsed_text": parsed_text, "requested_url": url, "gs_data": get_gs_urls(request, "index.html")}
 
     if not (gs_not_found):
         request_url: str = API_BACKEND_URL + "/evaluate"
@@ -168,6 +169,12 @@ def parse_url_evaluate_performance(request: Request, url: str = Form(...)) -> _T
         length_eval : dict[str, float|int] = data.get("length_eval")
         rouge_eval : dict[str, float] = data.get("rouge_eval")
         bleu_eval : dict[str, float] = data.get("bleu_eval")
+
+        gs_info: dict[str, str] = {
+            "gs_text": gold_text
+        }
+
+        context_dict.update(gs_info)
 
         evaluation_info: dict[str, float|int] = {
 

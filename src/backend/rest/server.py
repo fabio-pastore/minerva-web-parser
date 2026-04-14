@@ -27,13 +27,11 @@ for domain in WebParser.get_supported_domains():
         case d if (d == WikipediaParser.get_supported_domain()):
             parse_handler[domain] = wiki_parser # assign parse handle to WikipediaParser object
         case d if (d == MarvelParser.get_supported_domain()):
-            parse_handler[domain] = marvel_parser
+            parse_handler[domain] = marvel_parser # assign parse handle to MarvelParser object 
         case d if (d == IpsosParser.get_supported_domain()):
             parse_handler[domain] = ipsos_parser # assign parse handle to IpsosParser object 
         case d if (d == RaiPlaySoundParser.get_supported_domain()):
             parse_handler[domain] = rai_parser # assign parse handle to RaiPlaySoundParser object
-            
-    # for each domain... TODO: add new parsers when available
         case _:
             print(f"[API-SERVER] Could not find suitable parser for domain '{domain}'")
 

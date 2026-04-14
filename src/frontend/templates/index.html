@@ -47,15 +47,20 @@
         <br>
         <div class="w-[95vw] text-center m-auto rounded-lg shadow-md border p-4 border-black bg-gray-100">
             <form id="formid" method="post" action="/parse_url_evaluate_perf" onsubmit="display_loading_div()">
-                <label class="font-semibold">URL: </label>
+                <label class="font-semibold">URL to parse: </label>
                 <input class="rounded-lg border border-black px-1 font-light" type="text" name="url" id='url_input' placeholder="https://mydomain.org/webpage" size="50" required>
                 <button class="rounded-lg border border-black px-8 bg-gray-200" style="cursor: pointer;" type="submit">Parse</button><br>
-                <label class="font-semibold">Select GS: </label>
-                <select class="mt-2 rounded-lg border border-black font-light px-1" name="url_select" onchange="document.querySelector('input[name=url]').value = this.value">
-                    <option value=""> GS URL </option>
-                        {% for url in gs_urls %}
-                        <option value="{{ url }}">{{ url }}</option>
-                        {% endfor %}
+                <label class="font-semibold">Select domain: </label>
+                <select class="mt-2 rounded-lg border border-black font-light px-1" name="domain_sel" id="domain_sel">
+                    <option value="">Select a domain</option>
+                        {% for domain in gs_data.keys() %}
+                        <option value="{{ domain }}">{{ domain }}</option>
+                        {% endfor %}       
+                </select>
+                <br>
+                <label class="font-semibold">Select GS: </label> 
+                <select class="mt-2 rounded-lg border border-black font-light px-1" name="gs_select" id="gs_select" disabled onchange="document.querySelector('input[name=url]').value = this.value">
+                    <option value="">No domain selected</option>
                 </select>
                 <br>
             </form>
@@ -160,57 +165,114 @@
             <div class="w-[95vw] m-auto overflow-x-hidden">
                 <div class="grid grid-cols-2 text-center text-3xl">
                 <div class="p-3 font-semibold">
+                    GS text
+                </div>
+                    <div class="p-3 font-semibold">
+                        Parsed text
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 divide-x divide-black h-96 border border-black shadow-lg mb-6 text-xsm font-light
+                bg-gray-100 text-justify break-all">
+                    <div class="p-2 overflow-y-auto h-full">
+                        {{gs_text if gs_text else ''}}
+                    </div>
+                    
+                    <div class="p-2 overflow-y-auto h-full">
+                        {{parsed_text if parsed_text else ''}}
+                    </div>
+                </div>
+            </div>
+
+            <div class="w-[50vw] m-auto overflow-x-hidden text-center">
+                <div class="p-3 font-semibold text-3xl">
                     HTML text
                 </div>
-                <div class="p-3 font-semibold">
-                    Parsed text
-                </div>
-                </div>
-                <div class="grid grid-cols-2 divide-x divide-black h-96 border border-black shadow-lg mb-2 text-xsm font-light
-                bg-gray-100 text-justify break-all">
-                <div class="p-2 overflow-y-auto h-full">
-                    {{html_text if html_text else ''}}
-                </div>
-                
-                <div class="p-2 overflow-y-auto h-full">
-                    {{parsed_text if parsed_text else ''}}
+                <div class="h-96 border border-black shadow-lg mb-2 text-xsm font-light bg-gray-100 text-justify break-all">
+                    <div class="p-2 overflow-y-auto h-full">
+                        {{html_text if html_text else ''}}
+                    </div>
                 </div>
             </div>
         </div>
         <br>
     </div>
     <div id="hidden_j2_data" style="display: none;" 
-        data-requested_url = "{{ requested_url }}"
-        data-err = "{{ error }}"
+        data-requested_url = '{{ requested_url }}'
+        data-err = '{{ error }}'
+        data-gs_urls = '{{ gs_data | tojson | safe }}'
         >
     </div>
 </body>
 <script>
+    const MAX_LOAD_TIME = 120000 // 2 minutes
     const url_input = document.getElementById("url_input");
     const hidden_data = document.getElementById("hidden_j2_data");
     const load_div = document.getElementById("ldiv");
     const err_span = document.getElementById("err_span");
-    if (hidden_data.dataset.requested_url !== '') {
-        url_input.value = hidden_data.dataset.requested_url;
-        load_div.style.transition = "none";
-        load_div.classList.add("appear");
-        err_span.style.display = 'inline'; 
-        err_span.style.color = 'green';
-        err_span.innerHTML = "<b>[INFO] OK (200)</b>";
+    const gs_data = JSON.parse(hidden_data.dataset.gs_urls);
 
-        setTimeout(() => {
-            load_div.style.transition = "opacity 0.3s";
-            load_div.classList.remove("appear");
-        }, 50);
+    function load_gs_urls() {
+         if (!gs_data) return;
+
+         const selectDomain = document.getElementById('domain_sel');
+         const selectURL = document.getElementById('gs_select');
+
+         selectDomain.addEventListener('change', (e) => {
+            const selectedDomain = e.target.value;
+            selectURL.innerHTML = '<option value="">Select a GS URL</option>';
+
+            if (selectedDomain && gs_data[selectedDomain]) {
+                selectURL.disabled = false;
+                gs_data[selectedDomain].forEach(url => {
+                    const new_option = document.createElement('option');
+                    new_option.value = url;
+                    new_option.textContent = url.length > 65 ? url.substring(0, 65) + '...' : url;
+                    selectURL.appendChild(new_option);
+                });
+            }
+            else selectURL.disabled = true;
+         });
+
     }
 
-    if (hidden_data.dataset.err !== '') {
-        err_span.style.display = 'inline';
+    function load_page() {
+
+        if (hidden_data.dataset.requested_url !== '') {
+            url_input.value = hidden_data.dataset.requested_url;
+            load_div.style.transition = "none";
+            load_div.classList.add("appear");
+            err_span.style.display = 'inline'; 
+            err_span.style.color = 'green';
+            err_span.innerHTML = "<b>[INFO] OK (200)</b>";
+
+            load_gs_urls();
+
+            setTimeout(() => {
+                load_div.style.transition = "opacity 0.3s";
+                load_div.classList.remove("appear");
+            }, 50);
+        }
+
+        else {
+            load_gs_urls();
+        }
+
+        if (hidden_data.dataset.err !== '') {
+            err_span.style.display = 'inline';
+        }
     }
 
     function display_loading_div() {
         err_span.style.display = 'none'; // hide error message 
         load_div.classList.add("appear");
+        setTimeout(() => {
+            load_div.classList.remove("appear");
+            err_span.innerHTML = "<b>[ERROR] Something went wrong. Please try again later. (REQUEST_TIMEOUT) </b>";
+            err_span.style.display = 'inline';
+        }, MAX_LOAD_TIME);
     }
+
+    load_page();
+
 </script>
 </html>
