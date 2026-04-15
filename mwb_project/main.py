@@ -1,17 +1,17 @@
 import asyncio
-from src.parser.WebParser import WebParser
-from src.parser.IpsosParser import IpsosParser
-from src.backend.rest.evaluation import get_tokens
+from backend.src.parser.WebParser import WebParser
+from backend.src.parser.MarvelParser import MarvelParser
+from backend.src.evaluation.evaluation import get_tokens
 
 async def main():
     """Used to test single runs of the parser on a specific URL without starting the docker container"""
-    myParser : WebParser = IpsosParser()
-    data: dict[str, str] = await myParser.parse_url(url='https://www.ipsos.com/en-uk/over-8-10-britons-concerned-about-impact-iran-conflict-fuelenergy-prices-belief-special')
+    myParser : WebParser = MarvelParser()
+    data: dict[str, str] = await myParser.parse_html(path='mwb_project/test.html')
 
-    with open('src/outputs/last_parse.md', 'w', encoding='UTF-8') as fout: # NOTE: execute from minerva-web-parser dir
+    with open('mwb_project/outputs/last_parse.md', 'w', encoding='UTF-8') as fout:
         fout.write(data.get("parsed_text")) 
 
-    with open ('src/outputs/generated_tokens.txt', 'w', encoding='UTF-8') as fout:
+    with open ('mwb_project/outputs/generated_tokens.txt', 'w', encoding='UTF-8') as fout:
         for token in get_tokens(data.get("parsed_text")):
             fout.write(f"{token}\n") # output tokens: for debug purposes
 

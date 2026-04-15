@@ -1,5 +1,9 @@
 from src.parser.WebParser import WebParser
+from src.exceptions.WebParserException import WebParserException
+from src.evaluation.evaluation import bleu_eval
 from crawl4ai import DefaultMarkdownGenerator, AsyncWebCrawler, CrawlResult
+import os
+import json
 
 class RaiPlaySoundParser(WebParser):
 
@@ -18,6 +22,10 @@ class RaiPlaySoundParser(WebParser):
     .more-info, .banner-buttons, .fascia__filtri, .fascia__filtri__wrapper, .filtro, .custom-scrollbar, .filtro__close, .lg\\:hidden, .fascia__title, .skip-link,
     .card-list__button, .calendar, .hidden, .card-image, .sidekick__buttons
     '''
+
+    # lowest score obtained on all GS URL evaluations, we compare this with the strictest eval (BLEU) to check if we are using an outdated GS for an updated page
+    __MIN_EVAL_SCORE: float = 0.923
+    __TMP_HTML_FPATH: str = "/tmp/local_rpsp_tmp.html"
 
     '''
     NOTE: also added css and tag exclusions for dynamic pages like:
@@ -43,23 +51,57 @@ class RaiPlaySoundParser(WebParser):
     def get_supported_domain(cls) -> str:
         return cls.__SUPPORTED_DOMAIN
     
-    async def parse_url(self, url: str) -> dict[str, str]:
+    async def parse_url(self, url: str, **kwargs) -> dict[str, str]:
         """
         Crawls a RaiPlaySound webpage, extracts content, and converts it to markdown.
 
         Args:
-            url (str): The RaiPlaySound URL to crawl and parse.
+            Required:
+                url (str): The RaiPlaySound URL to crawl and parse.
+            Other:
+                **kwargs: Keyword arguments, reserved for internal fallback parsing, 
+                          in case the page has changed since GS retrieval.
 
         Returns:
             dict[str, str]: A dictionary containing 'url', 'domain', 'title', 
                 'html_text', and the 'parsed_text'. Returns an empty dict if the crawl fails.
         """
+        local_parse: bool = kwargs.get("local_parse", False)
+
         async with AsyncWebCrawler(config=self.browser_cfg) as crawler:
         # Run the crawler on a URL
             if (url.count("/") < 3): # check for invalid URL "https://domain/page" is the bare minimum (so we need at least three slashes) 
                 return {}
+            
+            domain: str = url.split('/')[2]
+            gs_file_path: str = f"gs_data/" + domain.replace(".", "_") + "_gs.json"     # not src/ anymore for docker
+            data: None = None
+            html_data: None = None
+            gs_data: None = None
+
+            with open(file=gs_file_path, mode='r', encoding='UTF-8') as fin:
+                data: list[dict] = json.load(fin)
+                for entry in data:
+                    if entry.get("url") == url:
+                        html_data: str = entry.get("html_text")
+                        gs_data: str = entry.get("gold_text")
+
+            if (local_parse): # create tmp .html from GS data and crawl it
+                if not os.path.exists(gs_file_path):
+                    raise WebParserException(f"[RaiPlaySoundParser] Could not open file '{gs_file_path}'")
+
+                with open(file=RaiPlaySoundParser.__TMP_HTML_FPATH, mode='w', encoding='UTF-8') as fout:
+                    if (html_data):
+                        fout.write(html_data)
+                    else: 
+                        raise WebParserException(f"[RaiPlaySoundParser] Could not find GS for URL '{url}' during fallback local parse.")
                                         
-            result : CrawlResult = await crawler.arun(url, config = self.crawler_cfg)
+            result : CrawlResult = await crawler.arun(url if (not local_parse) else f"file://{RaiPlaySoundParser.__TMP_HTML_FPATH}", config = self.crawler_cfg)
+
+            if (local_parse): # remove tmp .html file, since we no longer have any use for it
+                if not os.path.exists(RaiPlaySoundParser.__TMP_HTML_FPATH):
+                    raise WebParserException(f"[RaiPlaySoundParser] Could not remove file '{RaiPlaySoundParser.__TMP_HTML_FPATH}'")
+                os.remove(RaiPlaySoundParser.__TMP_HTML_FPATH)
 
             success: bool = result.success
 
@@ -79,8 +121,12 @@ class RaiPlaySoundParser(WebParser):
                 if (self.md_gen_opt.get("ignore_links")):
                     print("[RaiPlaySoundParser] | [WARNING] Links are currently being ignored! To change this behaviour, set 'ignore_links' in MARKDOWN_GEN_OPTIONS to False.")
 
+            if (not local_parse and gs_data and any(score < RaiPlaySoundParser.__MIN_EVAL_SCORE for score in list(bleu_eval(gs_data, page_markdown).model_dump().values()))):
+                if (WebParser.get_debug()):
+                    print(f"[RaiPlaySoundParser] | [WARNING] Computed preliminary evaluation score (BLEU) below minimum score for domain '{RaiPlaySoundParser.__SUPPORTED_DOMAIN}' ({RaiPlaySoundParser.__MIN_EVAL_SCORE}). The page (or article) may have been edited. Attempting fallback parse based on local GS data.")
+                return await self.parse_url(url, local_parse=True)
+
             raw_html: str = result.html # original page HTML content
-            domain: str = url.split('/')[2]
 
             ret: dict[str, str] = {
                 "url": url,

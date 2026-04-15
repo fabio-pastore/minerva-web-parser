@@ -200,6 +200,7 @@
         data-requested_url = '{{ requested_url }}'
         data-err = '{{ error }}'
         data-gs_urls = '{{ gs_data | tojson | safe }}'
+        data-gs_text = '{{ gs_text }}''
         >
     </div>
 </body>
@@ -251,6 +252,11 @@
                 load_div.style.transition = "opacity 0.3s";
                 load_div.classList.remove("appear");
             }, 50);
+
+            setTimeout(() => {
+                if (hidden_data.dataset.gs_text === '' && hidden_data.dataset.requested_url !== '') alert("No GS exists for the given URL.")
+            }, 425);
+            
         }
 
         else {

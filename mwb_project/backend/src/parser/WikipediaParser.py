@@ -1,7 +1,11 @@
 from src.parser.WebParser import WebParser
+from src.exceptions.WebParserException import WebParserException
+from src.evaluation.evaluation import bleu_eval
 from crawl4ai import DefaultMarkdownGenerator, AsyncWebCrawler, CrawlResult
 from bs4 import BeautifulSoup
 import regex as re
+import os
+import json
 class WikipediaParser(WebParser):
 
     __SUPPORTED_DOMAIN: str = 'it.wikipedia.org'
@@ -25,6 +29,10 @@ class WikipediaParser(WebParser):
     '''
     # NOTE: temporarily removed the following exclusions: .mw-collapsible, .mw-collapsed, .mw-made-collapsible, .noprint for performance improvement
     
+    # lowest score obtained on all GS URL evaluations, we compare this with the strictest eval (BLEU) to check if we are using an outdated GS for an updated page
+    __MIN_EVAL_SCORE: float = 0.965
+    __TMP_HTML_FPATH: str = "/tmp/local_wpp_tmp.html"
+
     def __init__(self):
         super().__init__(
             targets = WikipediaParser.__TARGETS, 
@@ -56,25 +64,59 @@ class WikipediaParser(WebParser):
             index_match: int = re_match.start()
             md: str = md[:index_match]
             
-        return WebParser.json_convert(md) 
+        return WebParser.json_seralize(md) 
     
-    async def parse_url(self, url: str) -> dict[str, str]:
+    async def parse_url(self, url: str, **kwargs) -> dict[str, str]:
         """
         Crawls a Wikipedia webpage, extracts content, and converts it to markdown.
 
         Args:
-            url (str): The Wikipedia URL to crawl and parse.
+            Required:
+                url (str): The Wikipedia URL to crawl and parse.
+            Other:
+                **kwargs: Keyword arguments, reserved for internal fallback parsing, 
+                          in case the page has changed since GS retrieval.
 
         Returns:
             dict[str, str]: A dictionary containing 'url', 'domain', 'title', 
                 'html_text', and the cleaned 'parsed_text'. Returns an empty dict if the crawl fails.
         """
+        local_parse: bool = kwargs.get("local_parse", False)
+
         async with AsyncWebCrawler(config=self.browser_cfg) as crawler:
         # Run the crawler on a URL
             if (url.count("/") < 3): # check for invalid URL "https://domain/page" is the bare minimum (so we need at least three slashes) 
                 return {}
+            
+            domain: str = url.split('/')[2]
+            gs_file_path: str = f"gs_data/" + domain.replace(".", "_") + "_gs.json"     # not src/ anymore for docker
+            data: None = None
+            html_data: None = None
+            gs_data: None = None
+
+            with open(file=gs_file_path, mode='r', encoding='UTF-8') as fin:
+                data: list[dict] = json.load(fin)
+                for entry in data:
+                    if entry.get("url") == url:
+                        html_data: str = entry.get("html_text")
+                        gs_data: str = entry.get("gold_text")
+
+            if (local_parse): # create tmp .html from GS data and crawl it
+                if not os.path.exists(gs_file_path):
+                    raise WebParserException(f"[WikipediaParser] Could not open file '{gs_file_path}'")
+
+                with open(file=WikipediaParser.__TMP_HTML_FPATH, mode='w', encoding='UTF-8') as fout:
+                    if (html_data):
+                        fout.write(html_data)
+                    else: 
+                        raise WebParserException(f"[WikipediaParser] Could not find GS for URL '{url}' during fallback local parse.")
                                         
-            result : CrawlResult = await crawler.arun(url, config = self.crawler_cfg)
+            result : CrawlResult = await crawler.arun(url if (not local_parse) else f"file://{WikipediaParser.__TMP_HTML_FPATH}", config = self.crawler_cfg)
+
+            if (local_parse): # remove tmp .html file, since we no longer have any use for it
+                if not os.path.exists(WikipediaParser.__TMP_HTML_FPATH):
+                    raise WebParserException(f"[WikipediaParser] Could not remove file '{WikipediaParser.__TMP_HTML_FPATH}'")
+                os.remove(WikipediaParser.__TMP_HTML_FPATH)
 
             success: bool = result.success
 
@@ -98,8 +140,12 @@ class WikipediaParser(WebParser):
                 if (self.md_gen_opt.get("ignore_links")):
                     print("[WikipediaParser] | [WARNING] Links are currently being ignored! To change this behaviour, set 'ignore_links' in MARKDOWN_GEN_OPTIONS to False.")
 
+            if (not local_parse and gs_data and any(score < WikipediaParser.__MIN_EVAL_SCORE for score in list(bleu_eval(gs_data, page_markdown).model_dump().values()))):
+                if (WebParser.get_debug()):
+                    print(f"[WikipediaParser] | [WARNING] Computed preliminary evaluation score (BLEU) below minimum score for domain '{WikipediaParser.__SUPPORTED_DOMAIN}' ({WikipediaParser.__MIN_EVAL_SCORE}). The page (or article) may have been edited. Attempting fallback parse based on local GS data.")
+                return await self.parse_url(url, local_parse=True)
+
             raw_html: str = result.html # original page HTML content
-            domain: str = url.split('/')[2]
 
             ret: dict[str, str] = {
                 "url": url,

@@ -1,7 +1,11 @@
 from src.parser.WebParser import WebParser
+from src.evaluation.evaluation import bleu_eval
+from src.exceptions.WebParserException import WebParserException
 from crawl4ai import DefaultMarkdownGenerator, AsyncWebCrawler, CrawlResult, BrowserConfig, CrawlerRunConfig, CacheMode
 from bs4 import BeautifulSoup
 import regex as re
+import os
+import json
 
 class MarvelParser(WebParser):
 
@@ -24,6 +28,10 @@ class MarvelParser(WebParser):
     [class*="social-share"], [class*="newsletter"],
     [data-component="footer"], [data-component="header"]
     '''
+    
+    # lowest score obtained on all GS URL evaluations, we compare this with the strictest eval (BLEU) to check if we are using an outdated GS for an updated page
+    __MIN_EVAL_SCORE: float = 1.0
+    __TMP_HTML_FPATH: str = "/tmp/local_mvp_tmp.html"
 
     def __init__(self):
         # Override browser config for Marvel's anti-bot protection
@@ -94,24 +102,58 @@ class MarvelParser(WebParser):
         # insert movie title as h1 heading that i get from title tag truncated at |
         md: str = f"# {title}\n" + md.strip() + "\n"
 
-        return WebParser.json_convert(md) 
+        return WebParser.json_seralize(md) 
 
-    async def parse_url(self, url: str) -> dict[str, str]:
+    async def parse_url(self, url: str, **kwargs) -> dict[str, str]:
         """
-        Crawls a Marvel.com movie page, extracts content, and converts it to markdown.
+        Crawls a Marvel.com movie page (or local HTML file), extracts content, and converts it to markdown.
 
         Args:
-            url (str): The Marvel.com URL to crawl and parse.
+            Required:
+                url (str): The Marvel URL to crawl and parse.
+            Other:
+                **kwargs: Keyword arguments, reserved for internal fallback parsing, 
+                          in case the page has changed since GS retrieval.
 
         Returns:
             dict[str, str]: A dictionary containing 'url', 'domain', 'title',
                 'html_text', and the cleaned 'parsed_text'. Returns an empty dict if the crawl fails.
         """
-        async with AsyncWebCrawler(config=self.browser_cfg) as crawler:
-            if url.count("/") < 3:
-                return {}
+        local_parse: bool = kwargs.get('local_parse', False)
 
-            result: CrawlResult = await crawler.arun(url, config=self.crawler_cfg)
+        async with AsyncWebCrawler(config=self.browser_cfg) as crawler:
+            if (url.count("/")) < 3:
+                return {}
+            
+            domain: str = url.split('/')[2]
+            gs_file_path: str = f"gs_data/" + domain.replace(".", "_") + "_gs.json"     # not src/ anymore for docker
+            data: None = None
+            html_data: None = None
+            gs_data: None = None
+
+            with open(file=gs_file_path, mode='r', encoding='UTF-8') as fin:
+                data: list[dict] = json.load(fin)
+                for entry in data:
+                    if entry.get("url") == url:
+                        html_data: str = entry.get("html_text")
+                        gs_data: str = entry.get("gold_text")
+
+            if (local_parse): # create tmp .html from GS data and crawl it
+                if not os.path.exists(gs_file_path):
+                    raise WebParserException(f"[MarvelParser] Could not open file '{gs_file_path}'")
+
+                with open(file=MarvelParser.__TMP_HTML_FPATH, mode='w', encoding='UTF-8') as fout:
+                    if (html_data):
+                        fout.write(html_data)
+                    else: 
+                        raise WebParserException(f"[MarvelParser] Could not find GS for URL '{url}' during fallback local parse.")
+
+            result: CrawlResult = await crawler.arun(url if (not local_parse) else f"file://{MarvelParser.__TMP_HTML_FPATH}", config=self.crawler_cfg)
+
+            if (local_parse): # remove tmp .html file, since we no longer have any use for it
+                if not os.path.exists(MarvelParser.__TMP_HTML_FPATH):
+                    raise WebParserException(f"[MarvelParser] Could not remove file '{MarvelParser.__TMP_HTML_FPATH}'")
+                os.remove(MarvelParser.__TMP_HTML_FPATH)
 
             success: bool = result.success
 
@@ -135,9 +177,13 @@ class MarvelParser(WebParser):
                 print(f"[MarvelParser] Successfully parsed webpage titled '{webpage_title}' for a total of {body_length} characters.")
                 if self.md_gen_opt.get("ignore_links"):
                     print("[MarvelParser] | [WARNING] Links are currently being ignored!")
+            
+            if (not local_parse and gs_data and any(score < MarvelParser.__MIN_EVAL_SCORE for score in list(bleu_eval(gs_data, page_markdown).model_dump().values()))):
+                if (WebParser.get_debug()):
+                    print(f"[MarvelParser] | [WARNING] Computed preliminary evaluation score (BLEU) below minimum score for domain '{MarvelParser.__SUPPORTED_DOMAIN}' ({MarvelParser.__MIN_EVAL_SCORE}). The page (or article) may have been edited. Attempting fallback parse based on local GS data.")
+                return await self.parse_url(url, local_parse=True)
 
             raw_html: str = result.html
-            domain: str = url.split('/')[2]
 
             ret: dict[str, str] = {
                 "url": url,

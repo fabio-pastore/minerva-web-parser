@@ -54,7 +54,7 @@ class WebParser(ABC):
         return cls.__DEBUG
     
     @classmethod
-    def json_convert(cls, in_ : str) -> str:
+    def json_seralize(cls, in_ : str) -> str:
         """
         Seralizes input string to JSON compatible string.
 

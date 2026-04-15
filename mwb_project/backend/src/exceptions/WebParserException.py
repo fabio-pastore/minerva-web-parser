@@ -1,0 +1,2 @@
+class WebParserException(Exception):
+    pass
