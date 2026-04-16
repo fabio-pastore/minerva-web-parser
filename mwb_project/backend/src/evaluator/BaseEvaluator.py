@@ -1,0 +1,85 @@
+from abc import ABC, abstractmethod
+from pydantic import BaseModel
+import regex as re
+import string
+
+class BaseEvaluator(ABC):
+
+    _DEBUG: bool = True
+    __PHONETIC_SYMBOLS: list[str] = ['ˈ', 'ˌ', 'ː', 'ˑ', '˘', '.', '‿'] # particular phonetic separators (e.g. see https://it.wikipedia.org/wiki/Alfabeto_fonetico_internazionale)
+
+    def __init__(self):
+        pass
+
+    def __sanitize_markdown(self, raw_text: str) -> str:
+        """
+        Auxiliary get_tokens() and get_tokens_list() helper function for markdown sanitization.
+
+        Cleans the text by removing markdown links, unlinked notes, punctuation, 
+        and special symbols before tokenizing.
+
+        Args:
+            raw_text (str): The raw markdown to sanitize.
+
+        Return:
+            str: Sanitized markdown string.
+        """
+        punctuation_remover: dict = str.maketrans({char: ' ' for char in string.punctuation})
+        phonetic_sym_remover: dict = str.maketrans({char: '' for char in BaseEvaluator.__PHONETIC_SYMBOLS}) # extremely niche applications, still useful for edge cases
+
+        out_text: str = re.sub(r'\[\[[[0-9]+\]\]', ' ', raw_text) # remove markdown unlinked notes
+        out_text = re.sub(r'\*\*\*|\*\*|\*|~~', ' ', out_text) 
+
+        """
+        The previous regex removes markdown formatting in particular cases where we would otherwise incorrectly split tokens, losing accuracy 
+        (NOTE: this is possible only if the word is in the form "a[bold(b)]" and not "a[bold(b)]a", since in markdown the latter is translated as a**b** a)
+        """
+
+        out_text = re.sub(r'(\[[^\]]*\])\(\s*https?://(?:[^()]|\([^()]*\))*\)', r'\1', out_text) # remove json dumped hypertext links
+        out_text = re.sub(r'\(\s*https?://(?:[^()]|\([^()]*\))*\)', ' ', out_text) # remove json dumped cite note links
+        out_text = re.sub(r'\\n|\\r', ' ', out_text) # for GS input 
+        out_text = out_text.translate(punctuation_remover) # removes punctuation
+        out_text = out_text.translate(phonetic_sym_remover) # removes rare phonetic symbols 
+        out_text = re.sub(r'[^\w\s]', ' ', out_text) # remove symbols like —, •, → that string.punctuation might have missed
+
+        return out_text
+
+    def _get_tokens(self, raw_text: str) -> set[str]:
+        """
+        Extracts a set of unique, lowercase alphanumeric tokens from raw text.
+
+        Args:
+            raw_text (str): The raw text to tokenize.
+
+        Returns:
+            set[str]: A set of unique string tokens found in the text.
+        """
+        sanitized_md: str = self.__sanitize_markdown(raw_text)
+        tokens: set[str] = set(sanitized_md.strip().lower().split())
+        return tokens
+
+    def _get_tokens_list(self, raw_text: str) -> list[str]:
+        """
+        Extracts an ordered list of lowercase alphanumeric tokens from raw text.
+
+        Args:
+            raw_text (str): The raw text to tokenize.
+
+        Returns:
+            list[str]: A list of string tokens in their sequential order.
+        """
+        sanitized_md: str = self.__sanitize_markdown(raw_text)
+        tokens: list[str] = sanitized_md.strip().lower().split()
+        return tokens
+    
+    def _ngram_counts(self, tokens: list[str], n: int) -> dict[tuple, int]:
+        '''Counts occurences of each n-long contiguous sequence of tokens, if n=1 -> simple word count'''
+        counts: dict[tuple, int] = {}
+        for i in range(len(tokens) - n + 1):
+            ng = tuple(tokens[i : i + n])
+            counts[ng] = counts.get(ng, 0) + 1
+        return counts
+
+    @abstractmethod
+    def evaluate(self, gold: str, parsed: str) -> BaseModel: # TokenEvaluator.TokenEval | LengthEvaluator.LengthEval | RougeEvaluator.RougeEval | BleuEvaluator.BleuEval
+        pass

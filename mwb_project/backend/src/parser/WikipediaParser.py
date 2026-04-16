@@ -1,6 +1,6 @@
 from src.parser.WebParser import WebParser
 from src.exceptions.WebParserException import WebParserException
-from src.evaluation.evaluation import bleu_eval
+from src.evaluator.BleuEvaluator import BleuEvaluator
 from crawl4ai import DefaultMarkdownGenerator, AsyncWebCrawler, CrawlResult
 from bs4 import BeautifulSoup
 import regex as re
@@ -103,7 +103,7 @@ class WikipediaParser(WebParser):
 
             if (local_parse): # create tmp .html from GS data and crawl it
                 if not os.path.exists(gs_file_path):
-                    raise WebParserException(f"[WikipediaParser] Could not open file '{gs_file_path}'")
+                    raise FileNotFoundError(f"[WikipediaParser] Could not open file '{gs_file_path}'")
 
                 with open(file=WikipediaParser.__TMP_HTML_FPATH, mode='w', encoding='UTF-8') as fout:
                     if (html_data):
@@ -115,7 +115,7 @@ class WikipediaParser(WebParser):
 
             if (local_parse): # remove tmp .html file, since we no longer have any use for it
                 if not os.path.exists(WikipediaParser.__TMP_HTML_FPATH):
-                    raise WebParserException(f"[WikipediaParser] Could not remove file '{WikipediaParser.__TMP_HTML_FPATH}'")
+                    raise FileNotFoundError(f"[WikipediaParser] Could not remove file '{WikipediaParser.__TMP_HTML_FPATH}'")
                 os.remove(WikipediaParser.__TMP_HTML_FPATH)
 
             success: bool = result.success
@@ -132,16 +132,16 @@ class WikipediaParser(WebParser):
             page_markdown: str = self.__cleanup(page_markdown)
             body_length: int = len(page_markdown)
 
-            if (WebParser.get_debug()):
+            if (self._DEBUG):
                 print(f"[WikipediaParser] Original HTML file length (in characters): {len(result.html)}")
 
-            if (WebParser.get_debug()):
+            if (self._DEBUG):
                 print(f"[WikipediaParser] Successfully parsed webpage titled '{webpage_title}' for a total of {body_length} characters.")
                 if (self.md_gen_opt.get("ignore_links")):
                     print("[WikipediaParser] | [WARNING] Links are currently being ignored! To change this behaviour, set 'ignore_links' in MARKDOWN_GEN_OPTIONS to False.")
 
-            if (not local_parse and gs_data and any(score < WikipediaParser.__MIN_EVAL_SCORE for score in list(bleu_eval(gs_data, page_markdown).model_dump().values()))):
-                if (WebParser.get_debug()):
+            if (not local_parse and gs_data and any(score < WikipediaParser.__MIN_EVAL_SCORE for score in list(BleuEvaluator().evaluate(gs_data, page_markdown).model_dump().values()))):
+                if (self._DEBUG):
                     print(f"[WikipediaParser] | [WARNING] Computed preliminary evaluation score (BLEU) below minimum score for domain '{WikipediaParser.__SUPPORTED_DOMAIN}' ({WikipediaParser.__MIN_EVAL_SCORE}). The page (or article) may have been edited. Attempting fallback parse based on local GS data.")
                 return await self.parse_url(url, local_parse=True)
 

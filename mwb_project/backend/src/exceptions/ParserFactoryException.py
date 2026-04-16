@@ -1,0 +1,2 @@
+class ParserFactoryException(Exception):
+    pass

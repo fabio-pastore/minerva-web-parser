@@ -1,5 +1,5 @@
 from src.parser.WebParser import WebParser
-from src.evaluation.evaluation import bleu_eval
+from src.evaluator.BleuEvaluator import BleuEvaluator
 from src.exceptions.WebParserException import WebParserException
 from crawl4ai import DefaultMarkdownGenerator, AsyncWebCrawler, CrawlResult, BrowserConfig, CrawlerRunConfig, CacheMode
 from bs4 import BeautifulSoup
@@ -140,7 +140,7 @@ class MarvelParser(WebParser):
 
             if (local_parse): # create tmp .html from GS data and crawl it
                 if not os.path.exists(gs_file_path):
-                    raise WebParserException(f"[MarvelParser] Could not open file '{gs_file_path}'")
+                    raise FileNotFoundError(f"[MarvelParser] Could not open file '{gs_file_path}'")
 
                 with open(file=MarvelParser.__TMP_HTML_FPATH, mode='w', encoding='UTF-8') as fout:
                     if (html_data):
@@ -152,7 +152,7 @@ class MarvelParser(WebParser):
 
             if (local_parse): # remove tmp .html file, since we no longer have any use for it
                 if not os.path.exists(MarvelParser.__TMP_HTML_FPATH):
-                    raise WebParserException(f"[MarvelParser] Could not remove file '{MarvelParser.__TMP_HTML_FPATH}'")
+                    raise FileNotFoundError(f"[MarvelParser] Could not remove file '{MarvelParser.__TMP_HTML_FPATH}'")
                 os.remove(MarvelParser.__TMP_HTML_FPATH)
 
             success: bool = result.success
@@ -170,16 +170,16 @@ class MarvelParser(WebParser):
             page_markdown = self.__cleanup(page_markdown, movie_name)
             body_length: int = len(page_markdown)
 
-            if WebParser.get_debug():
+            if (self._DEBUG):
                 print(f"[MarvelParser] Original HTML file length (in characters): {len(result.html)}")
 
-            if WebParser.get_debug():
+            if (self._DEBUG):
                 print(f"[MarvelParser] Successfully parsed webpage titled '{webpage_title}' for a total of {body_length} characters.")
                 if self.md_gen_opt.get("ignore_links"):
                     print("[MarvelParser] | [WARNING] Links are currently being ignored!")
             
-            if (not local_parse and gs_data and any(score < MarvelParser.__MIN_EVAL_SCORE for score in list(bleu_eval(gs_data, page_markdown).model_dump().values()))):
-                if (WebParser.get_debug()):
+            if (not local_parse and gs_data and any(score < MarvelParser.__MIN_EVAL_SCORE for score in list(BleuEvaluator().evaluate(gs_data, page_markdown).model_dump().values()))):
+                if (self._DEBUG):
                     print(f"[MarvelParser] | [WARNING] Computed preliminary evaluation score (BLEU) below minimum score for domain '{MarvelParser.__SUPPORTED_DOMAIN}' ({MarvelParser.__MIN_EVAL_SCORE}). The page (or article) may have been edited. Attempting fallback parse based on local GS data.")
                 return await self.parse_url(url, local_parse=True)
 

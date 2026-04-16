@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 
 class WebParser(ABC):
 
-    __DEBUG: bool = True # print __DEBUG messages
+    _DEBUG: bool = True # print _DEBUG messages
     __SUPPORTED_DOMAINS: set[str] | None = None
     __WORD_COUNT_THRESHOLD: int = 10
     
@@ -23,6 +23,10 @@ class WebParser(ABC):
             word_count_threshold = WebParser.__WORD_COUNT_THRESHOLD,
             cache_mode = CacheMode.BYPASS
         )
+
+    @classmethod
+    def get_subclasses(cls) -> list: # -> list[type[WebParser]]
+        return cls.__subclasses__()
 
     @classmethod
     def __import_supported_domains(cls) -> None:
@@ -50,10 +54,6 @@ class WebParser(ABC):
         return cls.__SUPPORTED_DOMAINS
     
     @classmethod
-    def get_debug(cls) -> bool:
-        return cls.__DEBUG
-    
-    @classmethod
     def json_seralize(cls, in_ : str) -> str:
         """
         Seralizes input string to JSON compatible string.
@@ -68,6 +68,11 @@ class WebParser(ABC):
         if len(out) >= 2:
             out: str = out[1:-1] # remove double quotes from json.dumps()
         return out
+    
+    @classmethod
+    @abstractmethod
+    def get_supported_domain(cls) -> str:
+        pass
         
     @abstractmethod
     async def parse_url(self, url: str) -> dict[str, str]:

@@ -1,6 +1,6 @@
 from src.parser.WebParser import WebParser
 from src.exceptions.WebParserException import WebParserException
-from src.evaluation.evaluation import bleu_eval
+from src.evaluator.BleuEvaluator import BleuEvaluator
 from crawl4ai import DefaultMarkdownGenerator, AsyncWebCrawler, CrawlResult
 import os
 import json
@@ -88,7 +88,7 @@ class RaiPlaySoundParser(WebParser):
 
             if (local_parse): # create tmp .html from GS data and crawl it
                 if not os.path.exists(gs_file_path):
-                    raise WebParserException(f"[RaiPlaySoundParser] Could not open file '{gs_file_path}'")
+                    raise FileNotFoundError(f"[RaiPlaySoundParser] Could not open file '{gs_file_path}'")
 
                 with open(file=RaiPlaySoundParser.__TMP_HTML_FPATH, mode='w', encoding='UTF-8') as fout:
                     if (html_data):
@@ -100,7 +100,7 @@ class RaiPlaySoundParser(WebParser):
 
             if (local_parse): # remove tmp .html file, since we no longer have any use for it
                 if not os.path.exists(RaiPlaySoundParser.__TMP_HTML_FPATH):
-                    raise WebParserException(f"[RaiPlaySoundParser] Could not remove file '{RaiPlaySoundParser.__TMP_HTML_FPATH}'")
+                    raise FileNotFoundError(f"[RaiPlaySoundParser] Could not remove file '{RaiPlaySoundParser.__TMP_HTML_FPATH}'")
                 os.remove(RaiPlaySoundParser.__TMP_HTML_FPATH)
 
             success: bool = result.success
@@ -113,16 +113,16 @@ class RaiPlaySoundParser(WebParser):
             page_markdown: str = result.markdown.raw_markdown
             body_length: int = len(page_markdown)
 
-            if (WebParser.get_debug()):
+            if (self._DEBUG):
                 print(f"[RaiPlaySoundParser] Original HTML file length (in characters): {len(result.html)}")
 
-            if (WebParser.get_debug()):
+            if (self._DEBUG):
                 print(f"[RaiPlaySoundParser] Successfully parsed webpage titled '{webpage_title}' for a total of {body_length} characters.")
                 if (self.md_gen_opt.get("ignore_links")):
                     print("[RaiPlaySoundParser] | [WARNING] Links are currently being ignored! To change this behaviour, set 'ignore_links' in MARKDOWN_GEN_OPTIONS to False.")
 
-            if (not local_parse and gs_data and any(score < RaiPlaySoundParser.__MIN_EVAL_SCORE for score in list(bleu_eval(gs_data, page_markdown).model_dump().values()))):
-                if (WebParser.get_debug()):
+            if (not local_parse and gs_data and any(score < RaiPlaySoundParser.__MIN_EVAL_SCORE for score in list(BleuEvaluator().evaluate(gs_data, page_markdown).model_dump().values()))):
+                if (self._DEBUG):
                     print(f"[RaiPlaySoundParser] | [WARNING] Computed preliminary evaluation score (BLEU) below minimum score for domain '{RaiPlaySoundParser.__SUPPORTED_DOMAIN}' ({RaiPlaySoundParser.__MIN_EVAL_SCORE}). The page (or article) may have been edited. Attempting fallback parse based on local GS data.")
                 return await self.parse_url(url, local_parse=True)
 

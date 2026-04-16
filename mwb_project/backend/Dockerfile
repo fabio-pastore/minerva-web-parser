@@ -10,4 +10,4 @@ RUN playwright install --with-deps chromium
 
 COPY . .
 
-CMD ["uvicorn", "src.restapi.server:app", "--host", "0.0.0.0", "--port", "8003"]
+CMD ["uvicorn", "src.api_server.server:app", "--host", "0.0.0.0", "--port", "8003"]
