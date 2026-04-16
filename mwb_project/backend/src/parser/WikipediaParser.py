@@ -80,6 +80,10 @@ class WikipediaParser(WebParser):
         Returns:
             dict[str, str]: A dictionary containing 'url', 'domain', 'title', 
                 'html_text', and the cleaned 'parsed_text'. Returns an empty dict if the crawl fails.
+
+        Raises:
+            WebParserException: If the internal fallback parse fails irrecoverably.
+            FileNotFoundError: If the files required during fallback local HTML parsing cannot be found.
         """
         local_parse: bool = kwargs.get("local_parse", False)
 

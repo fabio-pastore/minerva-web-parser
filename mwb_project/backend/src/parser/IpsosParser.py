@@ -146,6 +146,10 @@ class IpsosParser(WebParser):
         Returns:
             dict[str, str]: A dictionary containing 'url', 'domain', 'title', 
                 'html_text', and the cleaned 'parsed_text'. Returns an empty dict if the crawl fails.
+
+        Raises:
+            WebParserException: If either one of the internal fallback parses fails irrecoverably.
+            FileNotFoundError: If the files required during fallback local HTML parsing cannot be found.
         """
         fallback: bool = kwargs.get('fallback', False)
         updated_conf: CrawlerRunConfig = kwargs.get('updated_conf')

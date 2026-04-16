@@ -1,15 +1,18 @@
-from src.parser.ParserFactory import ParserFactory
-from src.parser.WebParser import WebParser
+from src.parser.parser_factory.ParserFactory import ParserFactory
 from src.evaluator.TokenEvaluator import TokenEvaluator
 from src.evaluator.LengthEvaluator import LengthEvaluator
 from src.evaluator.RougeEvaluator import RougeEvaluator
 from src.evaluator.BleuEvaluator import BleuEvaluator
-from pydantic import BaseModel
+from src.exceptions.ParserFactoryException import ParserFactoryException
+from src.exceptions.WebParserException import WebParserException
 from fastapi import FastAPI, HTTPException, Path
+from src.parser.WebParser import WebParser
+from pydantic import BaseModel
 import regex as re
 import json
 import os
 
+EXIT_ERROR_CODE: int = 1
 URL_REGEX: str = "^https?:\\/\\/(?:www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b(?:[-a-zA-Z0-9()@:%_\\+.~#?&\\/=]*)$"
 
 app = FastAPI()
@@ -17,8 +20,13 @@ print("[API-SERVER] | [INFO] Initializing...")
 
 # initialize parsers on server startup to reduce overhead, instead of doing it for each parse request
 p_factory: ParserFactory = ParserFactory()
-parse_handler: dict[str, WebParser] = p_factory.get_domain_handlers()
 
+try:
+    parse_handler: dict[str, WebParser] = p_factory.get_domain_handlers()
+except ParserFactoryException as err:
+    print(f"[API-SERVER] | [ERROR] Failed to initialize domain handlers for parsing: {repr(err)}")
+    print("[API-SERVER] | [FATAL] Unable to complete backend initialization. Shutting down...")
+    exit(EXIT_ERROR_CODE)
 class ParseOutput(BaseModel):
     url: str
     domain: str
@@ -78,7 +86,12 @@ async def parse_url(url: str = Path(...)) -> ParseOutput:
     if domain_to_parse not in WebParser.get_supported_domains():
         raise HTTPException(status_code=400, detail="domain not supported")
     
-    parse_output: dict[str, str] = await parse_handler[domain_to_parse].parse_url(url)
+    try:
+        parse_output: dict[str, str] = await parse_handler[domain_to_parse].parse_url(url)
+    except (WebParserException, FileNotFoundError) as err:
+        print(f"[API-SERVER] | [ERROR] Failed to parse URL '{url}': {repr(err)}")
+        raise HTTPException(status_code=500, detail="URL parse failed")
+
     if (len(parse_output) == 0):
         raise HTTPException(status_code=400, detail="unreachable URL")
     

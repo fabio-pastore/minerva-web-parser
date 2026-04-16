@@ -82,4 +82,19 @@ class BaseEvaluator(ABC):
 
     @abstractmethod
     def evaluate(self, gold: str, parsed: str) -> BaseModel: # TokenEvaluator.TokenEval | LengthEvaluator.LengthEval | RougeEvaluator.RougeEval | BleuEvaluator.BleuEval
+        """
+        Evaluates the parsed text against the gold standard text.
+
+        This is an abstract method that must be implemented by concrete 
+        evaluator subclasses (e.g., TokenEvaluator, RougeEvaluator) to compute 
+        specific metrics.
+
+        Args:
+            gold (str): The reference gold standard text.
+            parsed (str): The generated text extracted by the parser.
+
+        Returns:
+            BaseModel: A Pydantic model containing the evaluation metrics 
+                (specific type depends on the concrete subclass implementation).
+        """
         pass

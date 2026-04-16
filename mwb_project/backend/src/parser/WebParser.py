@@ -84,5 +84,9 @@ class WebParser(ABC):
 
         Returns:
             dict[str, str]: A dictionary containing parsing results such as url, domain, title, etc.
+
+        Raises:
+            WebParserException: If the URL parsing fails irrecoverably.
+            FileNotFoundError: If a certain file is required to parse the URL (applicable only for local parses) and it is not found.
         """
         pass  
