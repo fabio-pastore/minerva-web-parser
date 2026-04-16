@@ -138,7 +138,7 @@ def get_gold_standard(url: str = Path(...)) -> GSEntry:
         raise HTTPException(status_code=404, detail="gold standard not found for the given URL")
     
     with open(file=file_path, mode='r', encoding='UTF-8') as fin:
-        data: dict = json.load(fin)
+        data: list[dict] = json.load(fin)
 
     for entry in data:
         if entry.get("url") == url:
@@ -165,6 +165,9 @@ def get_all_golden_standard_domain(domain: str) -> ListGSEntry:
         raise HTTPException(status_code=400, detail="domain not supported")
     
     file_path: str = "gs_data/" + domain.replace(".", "_") + "_gs.json" # same as above
+
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="gold standard not found for the given URL")
 
     with open(file_path, mode='r', encoding='UTF-8') as fin:
         data: dict = json.load(fin)
@@ -217,6 +220,9 @@ async def full_gs_eval(domain: str) -> ParseEvaluation:
     gs: dict[str, str] = {}
     file_path: str = "gs_data/" + domain.replace(".", "_") + "_gs.json" # same
 
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail=f"gold standard not found for domain '{domain}'")
+
     with open(file_path, mode='r', encoding='UTF-8') as fin:
         data: dict = json.load(fin)
         for entry in data:
@@ -226,6 +232,9 @@ async def full_gs_eval(domain: str) -> ParseEvaluation:
         output: ParseOutput = await parse_url(url)
         parsed_text: str = output.parsed_text
         evals.append(evaluate_parsing(EvaluationInput(parsed_text=parsed_text, gold_text=gs.get(url))))
+
+    if not evals:
+        raise HTTPException(status_code=500, detail="unable to retrieve gold standard data")
     
     # extract and divide evals into types
     token_evals: list[TokenEvaluator.TokenLevelEval] = [parse_eval.token_level_eval for parse_eval in evals]

@@ -124,7 +124,7 @@ class IpsosParser(WebParser):
             md: str = md[:index_match]
 
         md: str = re.sub(IpsosParser.__NEWSLETTER_REGEX, "", md, flags=re.IGNORECASE | re.MULTILINE)
-        md: str = re.sub(IpsosParser.__ORDINALS_REGEX, "\1\2", md, flags=re.IGNORECASE) # join erroneously separated tokens during HTML to Markdown conversion (e.g. '3' and 'rd') 
+        md: str = re.sub(IpsosParser.__ORDINALS_REGEX, r"\1\2", md, flags=re.IGNORECASE) # join erroneously separated tokens during HTML to Markdown conversion (e.g. '3' and 'rd') 
         md: str = re.sub(r'[\x00-\x1F\x7F]', ' ', md) # remove leftover control characters from failed HTML parse, which may happen in rare occasions
         md: str = re.sub(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}", "[EMAIL REMOVED]", md) # remove emails for privacy
         md: str = re.sub(r"\+?\d[\d\s-]{8,}\d", "[PHONE REMOVED]", md) # remove phone numbers for privacy
@@ -166,9 +166,9 @@ class IpsosParser(WebParser):
 
             domain: str = url.split('/')[2]
             gs_file_path: str = f"gs_data/" + domain.replace(".", "_") + "_gs.json"     # not src/ anymore for docker
-            data: None = None
-            html_data: None = None
-            gs_data: None = None
+            data: None | list[dict] = None
+            html_data: None | str = None
+            gs_data: None | str = None
 
             with open(file=gs_file_path, mode='r', encoding='UTF-8') as fin:
                 data: list[dict] = json.load(fin)

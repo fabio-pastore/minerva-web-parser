@@ -94,9 +94,9 @@ class WikipediaParser(WebParser):
             
             domain: str = url.split('/')[2]
             gs_file_path: str = f"gs_data/" + domain.replace(".", "_") + "_gs.json"     # not src/ anymore for docker
-            data: None = None
-            html_data: None = None
-            gs_data: None = None
+            data: None | list[dict] = None
+            html_data: None | str = None
+            gs_data: None | str = None
 
             with open(file=gs_file_path, mode='r', encoding='UTF-8') as fin:
                 data: list[dict] = json.load(fin)
