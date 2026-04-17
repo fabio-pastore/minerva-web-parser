@@ -27,7 +27,7 @@ class BaseEvaluator(ABC):
         punctuation_remover: dict = str.maketrans({char: ' ' for char in string.punctuation})
         phonetic_sym_remover: dict = str.maketrans({char: '' for char in BaseEvaluator.__PHONETIC_SYMBOLS}) # extremely niche applications, still useful for edge cases
 
-        out_text: str = re.sub(r'\[\[[[0-9]+\]\]', ' ', raw_text) # remove markdown unlinked notes
+        out_text: str = re.sub(r'\[\[[[0-9]+\]\]', ' ', raw_text) # remove markdown unlinked notes, if any have survived previous cleanup
         out_text = re.sub(r'\*\*\*|\*\*|\*|~~', ' ', out_text) 
 
         """
@@ -36,7 +36,7 @@ class BaseEvaluator(ABC):
         """
 
         out_text = re.sub(r'(\[[^\]]*\])\(\s*https?://(?:[^()]|\([^()]*\))*\)', r'\1', out_text) # remove json dumped hypertext links
-        out_text = re.sub(r'\(\s*https?://(?:[^()]|\([^()]*\))*\)', ' ', out_text) # remove json dumped cite note links
+        out_text = re.sub(r'\(\s*https?://(?:[^()]|\([^()]*\))*\)', ' ', out_text) # remove json dumped cite note links, if any have survived previous cleanup
         out_text = re.sub(r'\\n|\\r', ' ', out_text) # for GS input 
         out_text = out_text.translate(punctuation_remover) # removes punctuation
         out_text = out_text.translate(phonetic_sym_remover) # removes rare phonetic symbols 

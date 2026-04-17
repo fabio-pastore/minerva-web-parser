@@ -4,8 +4,6 @@ from src.evaluator.BleuEvaluator import BleuEvaluator
 from crawl4ai import DefaultMarkdownGenerator, AsyncWebCrawler, CrawlResult
 from bs4 import BeautifulSoup
 import regex as re
-import os
-import json
 class WikipediaParser(WebParser):
 
     __SUPPORTED_DOMAIN: str = 'it.wikipedia.org'
@@ -13,6 +11,7 @@ class WikipediaParser(WebParser):
     __TARGETS: list[str] = ['.mw-parser-output']
     __MARKDOWN_REGEX: str = r"##\s+(?:See also|Notes|References|External links|Voci correlate|Note|Bibliografia|Collegamenti esterni|Altri progetti|Pagine correlate|Strumenti)" 
     # this is necessary since apparently some pages contain an arbitrary number of whitespaces between "##" and "Notes, References, etc."
+    __CITE_NOTES_REGEX: str = r'\[\[[[0-9]+\]\]\(\s*https?://(?:[^()]|\([^()]*\))*\)'
 
     __MARKDOWN_GEN_OPTIONS: dict[str, bool] = {
         'ignore_images': True, 
@@ -31,15 +30,15 @@ class WikipediaParser(WebParser):
     
     # lowest score obtained on all GS URL evaluations, we compare this with the strictest eval (BLEU) to check if we are using an outdated GS for an updated page
     __MIN_EVAL_SCORE: float = 0.965
-    __TMP_HTML_FPATH: str = "/tmp/local_wpp_tmp.html"
 
-    def __init__(self):
+    def __init__(self, gs_data: list[dict]):
         super().__init__(
             targets = WikipediaParser.__TARGETS, 
             tag_excl = WikipediaParser.__TAG_EXCLUSIONS, 
             md_gen = DefaultMarkdownGenerator(options = WikipediaParser.__MARKDOWN_GEN_OPTIONS), 
             md_gen_opt = WikipediaParser.__MARKDOWN_GEN_OPTIONS,
-            css_excl= WikipediaParser.__CSS_EXCLUSIONS
+            css_excl = WikipediaParser.__CSS_EXCLUSIONS,
+            gs_data = gs_data
         )
 
     @classmethod
@@ -63,8 +62,10 @@ class WikipediaParser(WebParser):
         if (re_match):
             index_match: int = re_match.start()
             md: str = md[:index_match]
-            
-        return WebParser.json_seralize(md) 
+
+        md = re.sub(WikipediaParser.__CITE_NOTES_REGEX, ' ', md) # remove cite notes and cite note links 
+        
+        return md.strip()
     
     async def parse_url(self, url: str, **kwargs) -> dict[str, str]:
         """
@@ -83,7 +84,6 @@ class WikipediaParser(WebParser):
 
         Raises:
             WebParserException: If the internal fallback parse fails irrecoverably.
-            FileNotFoundError: If the files required during fallback local HTML parsing cannot be found.
         """
         local_parse: bool = kwargs.get("local_parse", False)
 
@@ -93,34 +93,25 @@ class WikipediaParser(WebParser):
                 return {}
             
             domain: str = url.split('/')[2]
-            gs_file_path: str = f"gs_data/" + domain.replace(".", "_") + "_gs.json"     # not src/ anymore for docker
-            data: None | list[dict] = None
-            html_data: None | str = None
-            gs_data: None | str = None
+            html_text: None | str = None
+            gs_text: None | str = None
 
-            with open(file=gs_file_path, mode='r', encoding='UTF-8') as fin:
-                data: list[dict] = json.load(fin)
-                for entry in data:
+            if domain in self.gs_data:
+                for entry in self.gs_data[domain]:
                     if entry.get("url") == url:
-                        html_data: str = entry.get("html_text")
-                        gs_data: str = entry.get("gold_text")
+                        html_text: str = entry.get("html_text")
+                        gs_text: str = entry.get("gold_text")
+                        break
 
-            if (local_parse): # create tmp .html from GS data and crawl it
-                if not os.path.exists(gs_file_path):
-                    raise FileNotFoundError(f"[WikipediaParser] Could not open file '{gs_file_path}'")
+            if (local_parse): 
 
-                with open(file=WikipediaParser.__TMP_HTML_FPATH, mode='w', encoding='UTF-8') as fout:
-                    if (html_data):
-                        fout.write(html_data)
-                    else: 
-                        raise WebParserException(f"[WikipediaParser] Could not find GS for URL '{url}' during fallback local parse.")
+                if domain not in self.gs_data:
+                    raise WebParserException(f"[WikipediaParser] Could not retrieve GS data for domain '{domain}'.")
+                
+                if not (html_text and gs_text):
+                    raise WebParserException(f"[WikipediaParser] Could not find GS for URL '{url}' during fallback local parse.")
                                         
-            result : CrawlResult = await crawler.arun(url if (not local_parse) else f"file://{WikipediaParser.__TMP_HTML_FPATH}", config = self.crawler_cfg)
-
-            if (local_parse): # remove tmp .html file, since we no longer have any use for it
-                if not os.path.exists(WikipediaParser.__TMP_HTML_FPATH):
-                    raise FileNotFoundError(f"[WikipediaParser] Could not remove file '{WikipediaParser.__TMP_HTML_FPATH}'")
-                os.remove(WikipediaParser.__TMP_HTML_FPATH)
+            result : CrawlResult = await crawler.arun(url if (not local_parse) else f"raw:{html_text}", config = self.crawler_cfg)
 
             success: bool = result.success
 
@@ -144,7 +135,7 @@ class WikipediaParser(WebParser):
                 if (self.md_gen_opt.get("ignore_links")):
                     print("[WikipediaParser] | [WARNING] Links are currently being ignored! To change this behaviour, set 'ignore_links' in MARKDOWN_GEN_OPTIONS to False.")
 
-            if (not local_parse and gs_data and any(score < WikipediaParser.__MIN_EVAL_SCORE for score in list(BleuEvaluator().evaluate(gs_data, page_markdown).model_dump().values()))):
+            if (not local_parse and gs_text and any(score < WikipediaParser.__MIN_EVAL_SCORE for score in list(BleuEvaluator().evaluate(gs_text, page_markdown).model_dump().values()))):
                 if (self._DEBUG):
                     print(f"[WikipediaParser] | [WARNING] Computed preliminary evaluation score (BLEU) below minimum score for domain '{WikipediaParser.__SUPPORTED_DOMAIN}' ({WikipediaParser.__MIN_EVAL_SCORE}). The page (or article) may have been edited. Attempting fallback parse based on local GS data.")
                 return await self.parse_url(url, local_parse=True)

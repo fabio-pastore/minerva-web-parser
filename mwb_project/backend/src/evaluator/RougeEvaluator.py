@@ -43,7 +43,7 @@ class RougeEvaluator(BaseEvaluator):
             return 2 * prec * rec / (prec + rec) if (prec + rec) else 0.0
         ref_ng  = self._ngram_counts(ref_toks, n)
         hyp_ng  = self._ngram_counts(hyp_toks, n)
-        overlap = sum(min(hyp_ng[ng], ref_ng.get(ng, 0)) for ng in hyp_ng) #counts overlap between the two ngram counts
+        overlap = sum(min(hyp_ng[ng], ref_ng.get(ng, 0)) for ng in hyp_ng) # counts overlap between the two ngram counts
         rec  = overlap / max(1, sum(ref_ng.values()))
         prec = overlap / max(1, sum(hyp_ng.values()))
         return 2 * prec * rec / (prec + rec) if (prec + rec) else 0.0
@@ -64,5 +64,5 @@ class RougeEvaluator(BaseEvaluator):
         return RougeEvaluator.RougeEval(
             rouge1_f1 = round(self.__rouge_f1(g, p, RougeEvaluator.__INDIVIDUAL), 4),   # n = 1, individual words
             rouge2_f1 = round(self.__rouge_f1(g, p, RougeEvaluator.__BIGRAMS), 4),   # n = 2, bigrams
-            rougeL_f1 = round(self.__rouge_f1(g, p, 0), RougeEvaluator.__LCS),   # n = 0, LCS - rewards the right words appearing in the right order even if garbage is interspersed
+            rougeL_f1 = round(self.__rouge_f1(g, p, RougeEvaluator.__LCS), 4),   # n = 0, LCS - rewards the right words appearing in the right order even if garbage is interspersed
         )

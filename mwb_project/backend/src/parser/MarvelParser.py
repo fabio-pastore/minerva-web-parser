@@ -4,8 +4,6 @@ from src.exceptions.WebParserException import WebParserException
 from crawl4ai import DefaultMarkdownGenerator, AsyncWebCrawler, CrawlResult, BrowserConfig, CrawlerRunConfig, CacheMode
 from bs4 import BeautifulSoup
 import regex as re
-import os
-import json
 
 class MarvelParser(WebParser):
 
@@ -20,6 +18,9 @@ class MarvelParser(WebParser):
         'ignore_links': False
     }
 
+    __PAGE_LOAD: str = 'networkidle'
+    __PAGE_TIMEOUT: int = 30000
+
     __CSS_EXCLUSIONS: str = '''
     nav, footer, header,
     .cookie-banner, .privacy-settings, .consent-popup,
@@ -31,29 +32,27 @@ class MarvelParser(WebParser):
     
     # lowest score obtained on all GS URL evaluations, we compare this with the strictest eval (BLEU) to check if we are using an outdated GS for an updated page
     __MIN_EVAL_SCORE: float = 1.0
-    __TMP_HTML_FPATH: str = "/tmp/local_mvp_tmp.html"
 
-    def __init__(self):
+    def __init__(self, gs_data: list[dict]):
+        super().__init__(
+            targets = [],
+            tag_excl = MarvelParser.__TAG_EXCLUSIONS,
+            md_gen = DefaultMarkdownGenerator(options = MarvelParser.__MARKDOWN_GEN_OPTIONS),
+            md_gen_opt = MarvelParser.__MARKDOWN_GEN_OPTIONS,
+            css_excl = MarvelParser.__CSS_EXCLUSIONS,
+            gs_data = gs_data
+        )
         # Override browser config for Marvel's anti-bot protection
         self.browser_cfg: BrowserConfig = BrowserConfig(
             headless=True,
             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
             text_mode=True,
         )
-        self.md_gen_opt: dict[str, bool] = MarvelParser.__MARKDOWN_GEN_OPTIONS
-        self.crawler_cfg: CrawlerRunConfig = CrawlerRunConfig(
-            excluded_tags=MarvelParser.__TAG_EXCLUSIONS,
-            markdown_generator=DefaultMarkdownGenerator(options=MarvelParser.__MARKDOWN_GEN_OPTIONS),
-            excluded_selector=MarvelParser.__CSS_EXCLUSIONS,
-            only_text=False,
-            remove_forms=True,
-            remove_consent_popups=False,
-            word_count_threshold=10,
-            cache_mode=CacheMode.BYPASS,
-            wait_until='networkidle',
-            page_timeout=30000,
-            magic=True,
-        )
+        # Update crawler config for Marvel parsing
+        self.crawler_cfg.remove_consent_popups = False
+        self.crawler_cfg.wait_until = MarvelParser.__PAGE_LOAD
+        self.crawler_cfg.page_timeout = MarvelParser.__PAGE_TIMEOUT
+        self.crawler_cfg.magic = True  
 
     @classmethod
     def get_supported_domain(cls) -> str:
@@ -102,7 +101,7 @@ class MarvelParser(WebParser):
         # insert movie title as h1 heading that i get from title tag truncated at |
         md: str = f"# {title}\n" + md.strip() + "\n"
 
-        return WebParser.json_seralize(md) 
+        return md.strip()
 
     async def parse_url(self, url: str, **kwargs) -> dict[str, str]:
         """
@@ -121,7 +120,6 @@ class MarvelParser(WebParser):
 
         Raises:
             WebParserException: If the internal fallback parse fails irrecoverably.
-            FileNotFoundError: If the files required during fallback local HTML parsing cannot be found.
         """
         local_parse: bool = kwargs.get('local_parse', False)
 
@@ -130,34 +128,25 @@ class MarvelParser(WebParser):
                 return {}
             
             domain: str = url.split('/')[2]
-            gs_file_path: str = f"gs_data/" + domain.replace(".", "_") + "_gs.json"     # not src/ anymore for docker
-            data: None | list[dict] = None
-            html_data: None | str = None
-            gs_data: None | str = None
+            html_text: None | str = None
+            gs_text: None | str = None
 
-            with open(file=gs_file_path, mode='r', encoding='UTF-8') as fin:
-                data: list[dict] = json.load(fin)
-                for entry in data:
+            if domain in self.gs_data:
+                for entry in self.gs_data[domain]:
                     if entry.get("url") == url:
-                        html_data: str = entry.get("html_text")
-                        gs_data: str = entry.get("gold_text")
+                        html_text: str = entry.get("html_text")
+                        gs_text: str = entry.get("gold_text")
+                        break
 
-            if (local_parse): # create tmp .html from GS data and crawl it
-                if not os.path.exists(gs_file_path):
-                    raise FileNotFoundError(f"[MarvelParser] Could not open file '{gs_file_path}'")
+            if (local_parse): 
 
-                with open(file=MarvelParser.__TMP_HTML_FPATH, mode='w', encoding='UTF-8') as fout:
-                    if (html_data):
-                        fout.write(html_data)
-                    else: 
-                        raise WebParserException(f"[MarvelParser] Could not find GS for URL '{url}' during fallback local parse.")
-
-            result: CrawlResult = await crawler.arun(url if (not local_parse) else f"file://{MarvelParser.__TMP_HTML_FPATH}", config=self.crawler_cfg)
-
-            if (local_parse): # remove tmp .html file, since we no longer have any use for it
-                if not os.path.exists(MarvelParser.__TMP_HTML_FPATH):
-                    raise FileNotFoundError(f"[MarvelParser] Could not remove file '{MarvelParser.__TMP_HTML_FPATH}'")
-                os.remove(MarvelParser.__TMP_HTML_FPATH)
+                if domain not in self.gs_data:
+                    raise WebParserException(f"[MarvelParser] Could not retrieve GS data for domain '{domain}'.")
+                
+                if not (html_text and gs_text):
+                    raise WebParserException(f"[MarvelParser] Could not find GS for URL '{url}' during fallback local parse.")
+                                        
+            result : CrawlResult = await crawler.arun(url if (not local_parse) else f"raw:{html_text}", config = self.crawler_cfg)
 
             success: bool = result.success
 
@@ -182,7 +171,7 @@ class MarvelParser(WebParser):
                 if self.md_gen_opt.get("ignore_links"):
                     print("[MarvelParser] | [WARNING] Links are currently being ignored!")
             
-            if (not local_parse and gs_data and any(score < MarvelParser.__MIN_EVAL_SCORE for score in list(BleuEvaluator().evaluate(gs_data, page_markdown).model_dump().values()))):
+            if (not local_parse and gs_text and any(score < MarvelParser.__MIN_EVAL_SCORE for score in list(BleuEvaluator().evaluate(gs_text, page_markdown).model_dump().values()))):
                 if (self._DEBUG):
                     print(f"[MarvelParser] | [WARNING] Computed preliminary evaluation score (BLEU) below minimum score for domain '{MarvelParser.__SUPPORTED_DOMAIN}' ({MarvelParser.__MIN_EVAL_SCORE}). The page (or article) may have been edited. Attempting fallback parse based on local GS data.")
                 return await self.parse_url(url, local_parse=True)

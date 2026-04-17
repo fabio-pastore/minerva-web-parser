@@ -5,28 +5,50 @@ from src.evaluator.RougeEvaluator import RougeEvaluator
 from src.evaluator.BleuEvaluator import BleuEvaluator
 from src.exceptions.ParserFactoryException import ParserFactoryException
 from src.exceptions.WebParserException import WebParserException
-from fastapi import FastAPI, HTTPException, Path
+from fastapi import FastAPI, HTTPException
 from src.parser.WebParser import WebParser
 from pydantic import BaseModel
 import regex as re
 import json
-import os
 
 EXIT_ERROR_CODE: int = 1
 URL_REGEX: str = "^https?:\\/\\/(?:www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b(?:[-a-zA-Z0-9()@:%_\\+.~#?&\\/=]*)$"
 
-app = FastAPI()
 print("[API-SERVER] | [INFO] Initializing...")
 
+# load gs data in memory on server startup to avoid I/O reads for each request
+gs_data: dict[str, list[dict]] = {}
+
+for domain in WebParser.get_supported_domains():
+    file_path: str = "gs_data/" + domain.replace(".", "_") + "_gs.json" # same as above
+    try:
+        with open(file=file_path, mode='r', encoding='UTF-8') as fin:
+            domain_gs: list[dict] = json.load(fin)
+            gs_data[domain] = domain_gs
+    except FileNotFoundError as err:
+        print(f"[API-SERVER] | [ERROR] Failed to find path '{file_path}': {repr(err)}")
+        print("[API-SERVER] | [FATAL] Unable to complete backend initialization. Shutting down...")
+        exit(EXIT_ERROR_CODE)
+
+if not len(gs_data): # check for empty gs_data list
+    print(f"[API-SERVER] | [ERROR] Failed to load GS data.")
+    print("[API-SERVER] | [FATAL] Unable to complete backend initialization. Shutting down...")
+    exit(EXIT_ERROR_CODE)
+
 # initialize parsers on server startup to reduce overhead, instead of doing it for each parse request
-p_factory: ParserFactory = ParserFactory()
+parse_handler: dict[str, WebParser] | None = None
 
 try:
-    parse_handler: dict[str, WebParser] = p_factory.get_domain_handlers()
+    parse_handler = ParserFactory().get_domain_handlers(gs_data)
 except ParserFactoryException as err:
     print(f"[API-SERVER] | [ERROR] Failed to initialize domain handlers for parsing: {repr(err)}")
     print("[API-SERVER] | [FATAL] Unable to complete backend initialization. Shutting down...")
     exit(EXIT_ERROR_CODE)
+
+print("[API-SERVER] | [INFO] Successfully initialized GS data and required parsers.")
+print("[API-SERVER] | [INFO] Backend initialization complete.")
+
+# define pydantic models
 class ParseOutput(BaseModel):
     url: str
     domain: str
@@ -57,8 +79,10 @@ class ParseEvaluation(BaseModel):
     rouge_eval: RougeEvaluator.RougeEval
     bleu_eval: BleuEvaluator.BleuEval
 
-@app.get("/parse/{url:path}")
-async def parse_url(url: str = Path(...)) -> ParseOutput:
+app = FastAPI() # initialize endpoints
+
+@app.get("/parse")
+async def parse_url(url: str) -> ParseOutput:
     """
     Parses the target URL and extracts its markdown content.
 
@@ -88,7 +112,7 @@ async def parse_url(url: str = Path(...)) -> ParseOutput:
     
     try:
         parse_output: dict[str, str] = await parse_handler[domain_to_parse].parse_url(url)
-    except (WebParserException, FileNotFoundError) as err:
+    except WebParserException as err:
         print(f"[API-SERVER] | [ERROR] Failed to parse URL '{url}': {repr(err)}")
         raise HTTPException(status_code=500, detail="URL parse failed")
 
@@ -109,8 +133,8 @@ def get_supported_domains() -> SupportedDomains:
     """
     return SupportedDomains(domains=WebParser.get_supported_domains())
 
-@app.get("/gold_standard/{url:path}")
-def get_gold_standard(url: str = Path(...)) -> GSEntry:
+@app.get("/gold_standard")
+def get_gold_standard(url: str) -> GSEntry:
     """
     Retrieves the gold standard entry for a specific URL.
 
@@ -126,28 +150,25 @@ def get_gold_standard(url: str = Path(...)) -> GSEntry:
     Raises:
         HTTPException: If the URL is malformed, domain unsupported, or the gold standard is not found.
     """
-    domain: str = url.split("/")[2]
     if not (re.match(URL_REGEX, url) and url.count("/") >= 3):
         raise HTTPException(status_code=400, detail="malformed URL")
+
+    domain: str = url.split("/")[2]
     
     if domain not in WebParser.get_supported_domains():
         raise HTTPException(status_code=400, detail="domain not supported")
     
-    file_path: str = f"gs_data/" + domain.replace(".", "_") + "_gs.json"     # not src/ anymore for docker
-    if not os.path.exists(file_path):
+    if domain not in gs_data:
         raise HTTPException(status_code=404, detail="gold standard not found for the given URL")
-    
-    with open(file=file_path, mode='r', encoding='UTF-8') as fin:
-        data: list[dict] = json.load(fin)
 
-    for entry in data:
+    for entry in gs_data[domain]:
         if entry.get("url") == url:
             return GSEntry(url=entry.get("url"), domain=entry.get("domain"), title=entry.get("title"),
                            html_text=entry.get("html_text"), gold_text=entry.get("gold_text"))
         
     raise HTTPException(status_code=404, detail="gold standard not found for the given URL")
 
-@app.get("/full_gold_standard/{domain}")
+@app.get("/full_gold_standard")
 def get_all_golden_standard_domain(domain: str) -> ListGSEntry:
     """
     Retrieves all gold standard entries for a given domain.
@@ -163,16 +184,11 @@ def get_all_golden_standard_domain(domain: str) -> ListGSEntry:
     """
     if domain not in WebParser.get_supported_domains():
         raise HTTPException(status_code=400, detail="domain not supported")
-    
-    file_path: str = "gs_data/" + domain.replace(".", "_") + "_gs.json" # same as above
 
-    if not os.path.exists(file_path):
+    if domain not in gs_data:
         raise HTTPException(status_code=404, detail="gold standard not found for the given URL")
 
-    with open(file_path, mode='r', encoding='UTF-8') as fin:
-        data: dict = json.load(fin)
-
-    return ListGSEntry(gold_standard=data)
+    return ListGSEntry(gold_standard=gs_data[domain])
 
 @app.post("/evaluate")
 def evaluate_parsing(eval_input: EvaluationInput) -> ParseEvaluation:
@@ -196,7 +212,7 @@ def evaluate_parsing(eval_input: EvaluationInput) -> ParseEvaluation:
     return ParseEvaluation(token_level_eval=token_eval_res, length_eval= length_eval_res, rouge_eval= rouge_eval_res, bleu_eval= bleu_eval_res)
 
 
-@app.get("/full_gs_eval/{domain}")
+@app.get("/full_gs_eval")
 async def full_gs_eval(domain: str) -> ParseEvaluation:
     """
     Evaluates parsing performance across all gold standard URLs for a specific domain.
@@ -218,15 +234,13 @@ async def full_gs_eval(domain: str) -> ParseEvaluation:
     
     evals: list[ParseEvaluation] = []
     gs: dict[str, str] = {}
-    file_path: str = "gs_data/" + domain.replace(".", "_") + "_gs.json" # same
 
-    if not os.path.exists(file_path):
+    if domain not in gs_data:
         raise HTTPException(status_code=404, detail=f"gold standard not found for domain '{domain}'")
 
-    with open(file_path, mode='r', encoding='UTF-8') as fin:
-        data: dict = json.load(fin)
-        for entry in data:
-            gs[entry.get('url')] = entry.get('gold_text')
+    data: list[dict] = gs_data[domain]
+    for entry in data:
+        gs[entry.get('url')] = entry.get('gold_text')
 
     for url in gs.keys():
         output: ParseOutput = await parse_url(url)

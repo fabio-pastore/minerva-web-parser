@@ -46,20 +46,21 @@
         </div><br>
         <br>
         <div class="w-[95vw] text-center m-auto rounded-lg shadow-md border p-4 border-black bg-gray-100">
-            <form id="formid" method="post" action="/parse_url_evaluate_perf" onsubmit="display_loading_div()">
+            <form id="formid" method="get" action="/parse_eval" onsubmit="display_loading_div()">
                 <label class="font-semibold">URL to parse: </label>
                 <input class="rounded-lg border border-black px-1 font-light" type="text" name="url" id='url_input' placeholder="https://mydomain.org/webpage" size="50" required>
-                <button class="rounded-lg border border-black px-8 bg-gray-200" style="cursor: pointer;" type="submit">Parse</button><br>
+                <button class="rounded-lg border border-black px-4 bg-gray-200 font-light cursor-pointer disabled:bg-gray-300 disabled:text-gray-600 disabled:cursor-not-allowed" type="submit">Parse</button><br>
                 <label class="font-semibold">Select domain: </label>
-                <select class="mt-2 rounded-lg border border-black font-light px-1" name="domain_sel" id="domain_sel">
-                    <option value="">Select a domain</option>
+                <select class="mt-2 rounded-lg border border-black font-light px-1" id="domain_sel" onchange="document.getElementById('full_eval').disabled = this.value === ''">
+                    <option value="" selected>Select a domain</option>
                         {% for domain in gs_data.keys() %}
                         <option value="{{ domain }}">{{ domain }}</option>
                         {% endfor %}       
                 </select>
+                <button class="rounded-lg border border-black px-4 bg-gray-200 font-light cursor-pointer disabled:bg-gray-300 disabled:text-gray-600 disabled:cursor-not-allowed" type="button" id="full_eval" disabled onclick="full_evaluation()">Full evaluation</button>
                 <br>
                 <label class="font-semibold">Select GS: </label> 
-                <select class="mt-2 rounded-lg border border-black font-light px-1" name="gs_select" id="gs_select" disabled onchange="document.querySelector('input[name=url]').value = this.value">
+                <select class="mt-2 rounded-lg border border-black font-light px-1 disabled:bg-gray-300 disabled:text-gray-600 disabled:cursor-not-allowed" id="gs_select" disabled onchange="document.querySelector('input[name=url]').value = this.value">
                     <option value="">No domain selected</option>
                 </select>
                 <br>
@@ -76,7 +77,6 @@
         {% set goodness = 0 if goodness < 0 else goodness %}
         {% set hue = (goodness * 120) | round | int %}
         {% set position = (v * 100) | round(2) %}
-        
         <div class="mb-3 text-left px-2 text-sm">
             <div class="flex justify-between items-end mb-1">
                 <span class="font-medium">{{ label }}:</span>
@@ -84,9 +84,8 @@
                     {{ v | round(4) }}
                 </b>
             </div>
-            
             <div class="h-2 w-full bg-gradient-to-r from-red-500 via-yellow-400 to-green-500 rounded-full relative border border-gray-300">
-                <div class="absolute h-3.5 w-1 bg-black top-[-3px] rounded-sm" 
+                <div class="absolute h-3.5 w-1 bg-black top-[-3px] rounded-sm"
                     style="--pos: {{ position }}%; left: clamp(0%, var(--pos), 97%);">
                 </div>
             </div>
@@ -111,11 +110,11 @@
 
         <div class="p-4 border-r flex flex-col text-sm text-left">
             <b class="mb-4 text-lg text-center text-base font-bold">Length eval</b>
-            {% if l_golden_chars %}
-            <div class="flex justify-between px-2 border-b border-gray-100 py-1"><span>Golden characters:</span> <b>{{ l_golden_chars | round(3) }}</b></div>
-            <div class="flex justify-between px-2 border-b border-gray-100 py-1"><span>Parsed characters:</span> <b>{{ l_parsed_chars | round(3) }}</b></div>
-            <div class="flex justify-between px-2 border-b border-gray-100 py-1"><span>Golden words:</span> <b>{{ l_golden_words | round(3) }}</b></div>
-            <div class="flex justify-between px-2 border-b border-gray-100 py-1"><span>Parsed words:</span> <b>{{ l_parsed_words | round(3) }}</b></div>
+            {% if l_word_length_ratio %}
+            <div class="flex justify-between px-2 border-b border-gray-100 py-1"><span>Golden characters:</span> <b>{{ l_golden_chars | round(3) if l_golden_chars is not none else 'N/A'}}</b></div>
+            <div class="flex justify-between px-2 border-b border-gray-100 py-1"><span>Parsed characters:</span> <b>{{ l_parsed_chars | round(3) if l_parsed_chars is not none else 'N/A'}}</b></div>
+            <div class="flex justify-between px-2 border-b border-gray-100 py-1"><span>Golden words:</span> <b>{{ l_golden_words | round(3) if l_golden_words is not none else 'N/A'}}</b></div>
+            <div class="flex justify-between px-2 border-b border-gray-100 py-1"><span>Parsed words:</span> <b>{{ l_parsed_words | round(3) if l_parsed_words is not none else 'N/A'}}</b></div>
             <div class="flex justify-between px-2 mb-4 py-1"><span>Character length ratio:</span> <b>{{ l_char_length_ratio | round(3) }}</b></div>
             
             {{ metric_slider('Word length ratio', l_word_length_ratio) }}
@@ -211,6 +210,17 @@
     const load_div = document.getElementById("ldiv");
     const err_span = document.getElementById("err_span");
     const gs_data = JSON.parse(hidden_data.dataset.gs_urls);
+
+    function full_evaluation() {
+        display_loading_div();
+        url_input.disabled = true;
+        url_input.required = false;
+        const queryParams = new URLSearchParams();
+        const domain = document.getElementById("domain_sel").value;
+        queryParams.append('domain', domain);
+        queryParams.append('full_eval', true);
+        window.location.href = `/parse_eval?${queryParams.toString()}`; // redirect
+    }
 
     function load_gs_urls() {
          if (!gs_data) return;

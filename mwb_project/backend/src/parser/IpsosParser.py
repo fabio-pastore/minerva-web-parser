@@ -3,8 +3,6 @@ from src.exceptions.WebParserException import WebParserException
 from src.evaluator.BleuEvaluator import BleuEvaluator
 from crawl4ai import DefaultMarkdownGenerator, AsyncWebCrawler, CrawlResult, CrawlerRunConfig
 import regex as re
-import os
-import json
 
 class IpsosParser(WebParser):
 
@@ -81,15 +79,15 @@ class IpsosParser(WebParser):
     
     # lowest score obtained on all GS URL evaluations, we compare this with the strictest eval (BLEU) to check if we are using an outdated GS for an updated page
     __MIN_EVAL_SCORE: float = 0.953 
-    __TMP_HTML_FPATH: str = "/tmp/local_isp_tmp.html"
     
-    def __init__(self):
+    def __init__(self, gs_data: list[dict]):
         super().__init__(
             targets = IpsosParser.__TARGETS, 
             tag_excl = IpsosParser.__TAG_EXCLUSIONS, 
             md_gen = DefaultMarkdownGenerator(options = IpsosParser.__MARKDOWN_GEN_OPTIONS), 
             md_gen_opt = IpsosParser.__MARKDOWN_GEN_OPTIONS,
-            css_excl= IpsosParser.__CSS_EXCLUSIONS
+            css_excl = IpsosParser.__CSS_EXCLUSIONS,
+            gs_data = gs_data
         )
 
     @classmethod
@@ -129,7 +127,7 @@ class IpsosParser(WebParser):
         md: str = re.sub(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}", "[EMAIL REMOVED]", md) # remove emails for privacy
         md: str = re.sub(r"\+?\d[\d\s-]{8,}\d", "[PHONE REMOVED]", md) # remove phone numbers for privacy
         
-        return WebParser.json_seralize(md) 
+        return md.strip()
     
     async def parse_url(self, url: str, **kwargs) -> dict[str, str]:
         """
@@ -149,7 +147,6 @@ class IpsosParser(WebParser):
 
         Raises:
             WebParserException: If either one of the internal fallback parses fails irrecoverably.
-            FileNotFoundError: If the files required during fallback local HTML parsing cannot be found.
         """
         fallback: bool = kwargs.get('fallback', False)
         updated_conf: CrawlerRunConfig = kwargs.get('updated_conf')
@@ -165,34 +162,25 @@ class IpsosParser(WebParser):
                 raise WebParserException("[IpsosParser] Incomplete parameters for fallback parse: no config found")
 
             domain: str = url.split('/')[2]
-            gs_file_path: str = f"gs_data/" + domain.replace(".", "_") + "_gs.json"     # not src/ anymore for docker
-            data: None | list[dict] = None
-            html_data: None | str = None
-            gs_data: None | str = None
+            html_text: None | str = None
+            gs_text: None | str = None
 
-            with open(file=gs_file_path, mode='r', encoding='UTF-8') as fin:
-                data: list[dict] = json.load(fin)
-                for entry in data:
+            if domain in self.gs_data:
+                for entry in self.gs_data[domain]:
                     if entry.get("url") == url:
-                        html_data: str = entry.get("html_text")
-                        gs_data: str = entry.get("gold_text")
+                        html_text: str = entry.get("html_text")
+                        gs_text: str = entry.get("gold_text")
+                        break
 
-            if (local_parse): # create tmp .html from GS data and crawl it
-                if not os.path.exists(gs_file_path):
-                    raise FileNotFoundError(f"[IpsosParser] Could not open file '{gs_file_path}'")
+            if (local_parse): 
 
-                with open(file=IpsosParser.__TMP_HTML_FPATH, mode='w', encoding='UTF-8') as fout:
-                    if (html_data):
-                        fout.write(html_data)
-                    else: 
-                        raise WebParserException(f"[IpsosParser] Could not find GS for URL '{url}' during fallback local parse.")
-
-            result : CrawlResult = await crawler.arun(url if (not local_parse) else f"file://{IpsosParser.__TMP_HTML_FPATH}", config = self.crawler_cfg if (not fallback) else updated_conf)
-
-            if (local_parse): # remove tmp .html file, since we no longer have any use for it
-                if not os.path.exists(IpsosParser.__TMP_HTML_FPATH):
-                    raise FileNotFoundError(f"[IpsosParser] Could not remove file '{IpsosParser.__TMP_HTML_FPATH}'")
-                os.remove(IpsosParser.__TMP_HTML_FPATH)
+                if domain not in self.gs_data:
+                    raise WebParserException(f"[IpsosParser] Could not retrieve GS data for domain '{domain}'.")
+                
+                if not (html_text and gs_text):
+                    raise WebParserException(f"[IpsosParser] Could not find GS for URL '{url}' during fallback local parse.")
+                                        
+            result : CrawlResult = await crawler.arun(url if (not local_parse) else f"raw:{html_text}", config = self.crawler_cfg if (not fallback) else updated_conf)
             
             success: bool = result.success
 
@@ -230,7 +218,7 @@ class IpsosParser(WebParser):
                 if (self.md_gen_opt.get("ignore_links")):
                     print("[IpsosParser] | [WARNING] Links are currently being ignored! To change this behaviour, set 'ignore_links' in MARKDOWN_GEN_OPTIONS to False.")
 
-            if (not local_parse and gs_data and any(score < IpsosParser.__MIN_EVAL_SCORE for score in list(BleuEvaluator().evaluate(gs_data, page_markdown).model_dump().values()))):
+            if (not local_parse and gs_text and any(score < IpsosParser.__MIN_EVAL_SCORE for score in list(BleuEvaluator().evaluate(gs_text, page_markdown).model_dump().values()))):
                 if (self._DEBUG):
                     print(f"[IpsosParser] | [WARNING] Computed preliminary evaluation score (BLEU) below minimum score for domain '{IpsosParser.__SUPPORTED_DOMAIN}' ({IpsosParser.__MIN_EVAL_SCORE}). The page (or article) may have been edited. Attempting fallback parse based on local GS data.")
                 return await self.parse_url(

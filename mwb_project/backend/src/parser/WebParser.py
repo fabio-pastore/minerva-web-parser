@@ -9,7 +9,9 @@ class WebParser(ABC):
     __WORD_COUNT_THRESHOLD: int = 10
     
     @abstractmethod
-    def __init__(self, targets: list[str], tag_excl: list[str], md_gen: markdown_generation_strategy.MarkdownGenerationStrategy, md_gen_opt: dict[str, bool], css_excl: str):
+    def __init__(self, targets: list[str], tag_excl: list[str], md_gen: markdown_generation_strategy.MarkdownGenerationStrategy, 
+                 md_gen_opt: dict[str, bool], css_excl: str, gs_data: list[dict]):
+        
         self.browser_cfg : BrowserConfig = BrowserConfig(headless = True)
         self.md_gen_opt: dict[str, bool] = md_gen_opt
         self.crawler_cfg : CrawlerRunConfig = CrawlerRunConfig (
@@ -23,9 +25,11 @@ class WebParser(ABC):
             word_count_threshold = WebParser.__WORD_COUNT_THRESHOLD,
             cache_mode = CacheMode.BYPASS
         )
+        self.gs_data: list[dict] = gs_data
 
     @classmethod
     def get_subclasses(cls) -> list: # -> list[type[WebParser]]
+        """Retrieves the list of 'WebParser' subclasses."""
         return cls.__subclasses__()
 
     @classmethod
@@ -54,24 +58,9 @@ class WebParser(ABC):
         return cls.__SUPPORTED_DOMAINS
     
     @classmethod
-    def json_seralize(cls, in_ : str) -> str:
-        """
-        Seralizes input string to JSON compatible string.
-
-        Args:
-            in_ (str): the string to seralize
-
-        Returns:
-            str: seralized, JSON compatible string
-        """
-        out: str = json.dumps(in_, ensure_ascii=False) # escape markdown string for JSON
-        if len(out) >= 2:
-            out: str = out[1:-1] # remove double quotes from json.dumps()
-        return out
-    
-    @classmethod
     @abstractmethod
     def get_supported_domain(cls) -> str:
+        """Returns the supported domain for the concrete parser subclass that implements this abstract method."""
         pass
         
     @abstractmethod
@@ -87,6 +76,5 @@ class WebParser(ABC):
 
         Raises:
             WebParserException: If the URL parsing fails irrecoverably.
-            FileNotFoundError: If a certain file is required to parse the URL (applicable only for local parses) and it is not found.
         """
         pass  
