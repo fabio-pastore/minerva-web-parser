@@ -22,7 +22,19 @@ class RougeEvaluator(BaseEvaluator):
         super().__init__()
 
     def __lcs_length(self, x: Sequence, y: Sequence) -> int:
-        '''Classic Dynamic Programming LCS (Longest Common Sequence)'''
+        """
+        Computes the length of the Longest Common Subsequence (LCS).
+
+        Uses dynamic programming to find the longest sequence of elements that appear
+        in both inputs in the same relative order. Execution is capped to prevent O(n^2) bottlenecks.
+
+        Args:
+            x (Sequence): The first sequence (e.g., token list).
+            y (Sequence): The second sequence to compare against.
+
+        Returns:
+            int: The integer length of the Longest Common Subsequence.
+        """
         m, n = min(len(x), RougeEvaluator.__ROUGE_L_CAP), min(len(y), RougeEvaluator.__ROUGE_L_CAP)  # NOTE: this test is computationally intensive O(n^2), so we cap the length of analyzed portion of parsed text to an arbitrary value
         x, y = x[:m], y[:n]
         prev = [0] * (n + 1)
@@ -34,6 +46,20 @@ class RougeEvaluator(BaseEvaluator):
         return prev[n]
     
     def __rouge_f1(self, ref_toks: list[str], hyp_toks: list[str], n: int) -> float:
+        """
+        Calculates the ROUGE F1 score for a given n-gram order or LCS.
+
+        Computes precision and recall based on overlapping n-grams or the Longest 
+        Common Subsequence (if n=0), then combines them into an F1 harmonic mean.
+
+        Args:
+            ref_toks (list[str]): The reference tokens (gold standard).
+            hyp_toks (list[str]): The generated tokens (parsed text).
+            n (int): The n-gram order to evaluate. Use 0 for ROUGE-L (LCS-based).
+
+        Returns:
+            float: The computed ROUGE F1 score.
+        """
         if n == 0:  # ROUGE-L
             lcs = self.__lcs_length(ref_toks, hyp_toks)
             if not ref_toks or not hyp_toks:

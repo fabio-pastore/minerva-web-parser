@@ -1,6 +1,8 @@
 from src.parser.WebParser import WebParser
 from src.exceptions.ParserFactoryException import ParserFactoryException
 
+# NOTE: __init__.py contains all the necessary imports to assure that WebParser.get_subclasses() returns the actual list of subclasses, instead of an empty one.
+
 class ParserFactory:
 
     def __init__(self):
@@ -13,7 +15,7 @@ class ParserFactory:
         self.parsers: list[type[WebParser]] = WebParser.get_subclasses()
         self.domains: list[str] = WebParser.get_supported_domains()
 
-    def __lookup_domain_parser(self, domain: str, gs_data: list[dict]) -> WebParser | None:
+    def __lookup_domain_parser(self, domain: str, gs_data: dict[str, list[dict]]) -> WebParser | None:
         """
         Finds and instantiates the appropriate WebParser for a given domain.
 
@@ -22,8 +24,8 @@ class ParserFactory:
 
         Args:
             domain (str): The target domain string (e.g., 'it.wikipedia.org').
-            gs_data (list[dict]): A list of dict objects containing GS data for each 
-                                  domain supported by the 'WebParser' class.
+            gs_data (dict[str, list[dict]]): A dict data structure containing pairs in the form of <domain, domain_gs_data>, where 'domain_gs_data' 
+                                             is a list of dict objects containing the gold standards for URLs in 'domain'. 
 
         Returns:
             WebParser | None: An instance of the matching WebParser subclass, 
@@ -34,7 +36,7 @@ class ParserFactory:
                 return parser_cname(gs_data) # return instance of adequate WebParser subclass and pass gs_data
         return None
 
-    def get_domain_handlers(self, gs_data: list[dict]) -> dict[str, WebParser]:
+    def get_domain_handlers(self, gs_data: dict[str, list[dict]]) -> dict[str, WebParser]:
         """
         Creates a mapping of supported domains to their corresponding WebParser instances.
 
@@ -42,8 +44,9 @@ class ParserFactory:
         Raises an exception if a domain lacks a corresponding parser implementation.
 
         Args:
-            gs_data (list[dict]): A list of dict objects containing GS data for each 
-            domain supported by the 'WebParser' class.
+            gs_data (dict[str, list[dict]]): A dict data structure containing pairs in the form of <domain, domain_gs_data>, where 'domain_gs_data' 
+                                             is a list of dict objects containing the gold standards for URLs in 'domain'. 
+                                             
 
         Returns:
             dict[str, WebParser]: A dictionary mapping domain strings to their 

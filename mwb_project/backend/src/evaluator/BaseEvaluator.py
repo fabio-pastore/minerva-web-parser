@@ -73,7 +73,19 @@ class BaseEvaluator(ABC):
         return tokens
     
     def _ngram_counts(self, tokens: list[str], n: int) -> dict[tuple, int]:
-        '''Counts occurences of each n-long contiguous sequence of tokens, if n=1 -> simple word count'''
+        """
+        Counts the occurrences of n-gram sequences in a list of tokens.
+
+        Creates contiguous sequences of length 'n' from the token list and maps 
+        each sequence to its absolute frequency. If n=1, it acts as a simple word counter.
+
+        Args:
+            tokens (list[str]): The ordered list of tokens to process.
+            n (int): The length of the n-gram (e.g., 1 for unigrams, 2 for bigrams).
+
+        Returns:
+            dict[tuple, int]: A dictionary where keys are n-gram tuples and values are their occurrence counts.
+        """
         counts: dict[tuple, int] = {}
         for i in range(len(tokens) - n + 1):
             ng = tuple(tokens[i : i + n])

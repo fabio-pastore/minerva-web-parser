@@ -35,7 +35,16 @@ class RaiPlaySoundParser(WebParser):
     but we can still try to parse them by excluding the right tags and css selectors
     '''
     
-    def __init__(self, gs_data: list[dict]):
+    def __init__(self, gs_data: dict[str, list[dict]]):
+        """
+        Initializes the specific parser with domain-specific configurations.
+
+        Overrides default web parsing settings with domain-specific targets, exclusions,
+        and regex rules tailored to clean up the content from this specific domain.
+
+        Args:
+            gs_data (dict[str, list[dict]]): In-memory Gold Standard data used for fallback parsing.
+        """
         super().__init__(
             targets = RaiPlaySoundParser.__TARGETS, 
             tag_excl = RaiPlaySoundParser.__TAG_EXCLUSIONS, 

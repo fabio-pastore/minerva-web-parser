@@ -18,14 +18,19 @@ def post_data(req_url: str, json_payload: str) -> dict[str, dict|int|bool|str]:
     """
     Sends a POST request with a JSON payload to the specified URL.
 
+    Handles the HTTP POST request to the backend API and safely processes the JSON response,
+    catching any network or request exceptions.
+
     Args:
         req_url (str): The destination URL for the POST request.
-        json_payload (str): The JSON data to be sent in the request body.
+        json_payload (dict | None, optional): The JSON serializable data to be sent in the request body.
 
     Returns:
-        dict[str, dict | int | bool]: A dictionary containing the parsed JSON response ('response_data'),
-            the HTTP status code ('status_code'), and a boolean indicating success ('response_ok').
-    """ 
+        dict[str, dict|int|bool|str]: A dictionary containing:
+            - 'response_data' (dict): The parsed JSON response or error detail.
+            - 'status_code' (int | None): The HTTP status code of the response.
+            - 'response_ok' (bool): True if the request was successful (2xx), False otherwise.
+    """
     response: Response | None = None
     try:
         response = requests.post(req_url, json=json_payload)
@@ -53,15 +58,20 @@ def post_data(req_url: str, json_payload: str) -> dict[str, dict|int|bool|str]:
 
 def get_data(req_url: str, params: dict[str, str]) -> dict[str, dict|int|bool|str]:
     """
-    Sends a GET request to the specified URL and retrieves the data.
+    Sends a GET request with query parameters to the specified URL.
+
+    Handles the HTTP GET request to the backend API, safely processing the JSON response
+    and catching any network or request exceptions.
 
     Args:
         req_url (str): The destination URL for the GET request.
-        params (dict[str, str]): Parameters (if needed) for the GET request
+        params (dict[str, str]): A dictionary of query parameters to append to the URL.
 
     Returns:
-        dict: A dictionary containing the parsed JSON response ('response_data'), 
-            the HTTP status code ('status_code'), and a boolean indicating success ('response_ok').
+        dict[str, dict|int|bool|str]: A dictionary containing:
+            - 'response_data' (dict): The parsed JSON response or error detail.
+            - 'status_code' (int | None): The HTTP status code of the response.
+            - 'response_ok' (bool): True if the request was successful (2xx), False otherwise.
     """
     response: Response | None = None
     try:
@@ -138,6 +148,23 @@ def get_gs_urls() -> dict[str, str]:
     return gs_domains_urls
 
 def get_evaluation(request: Request, gold_text: str | None = None, parsed_text: str | None = None, full_evaluation: bool = False, domain: str | None = None) -> dict[str, float|int] | _TemplateResponse:
+    """
+    Retrieves the evaluation metrics for a single parsing result or a full domain.
+
+    Sends a request to the backend API to compute token-level, length, ROUGE, and BLEU metrics.
+    It dynamically handles both single-URL evaluation (POST) and full-domain evaluation (GET).
+
+    Args:
+        request (Request): The incoming FastAPI request.
+        gold_text (str | None, optional): The reference gold standard text. Defaults to None.
+        parsed_text (str | None, optional): The text extracted by the parser. Defaults to None.
+        full_evaluation (bool, optional): Flag indicating whether to perform a full domain evaluation. Defaults to False.
+        domain (str | None, optional): The target domain for full evaluation. Required if full_evaluation is True. Defaults to None.
+
+    Returns:
+        dict[str, float|int] | _TemplateResponse: A dictionary containing the aggregated evaluation metrics if successful,
+            or a rendered Jinja2 error template if the API request fails.
+    """
     request_url: str = API_BACKEND_URL + "/full_gs_eval" if full_evaluation else API_BACKEND_URL + "/evaluate"
 
     evaluation_payload: dict[str, str] | None = None
@@ -191,6 +218,20 @@ def get_evaluation(request: Request, gold_text: str | None = None, parsed_text: 
 
     
 def full_evaluation(request: Request, domain: str) -> _TemplateResponse:
+    """
+    Performs and renders a full evaluation for all Gold Standard URLs of a specific domain.
+
+    Fetches the aggregated evaluation metrics from the backend for the given domain
+    and updates the template context to display them on the web UI.
+
+    Args:
+        request (Request): The incoming FastAPI request.
+        domain (str): The target web domain to evaluate.
+
+    Returns:
+        _TemplateResponse: The rendered 'index.html' template containing the full domain evaluation metrics,
+            or an error template if the retrieval fails.
+    """
     context_dict: dict[str, any] = {"request": request, "gs_data": get_gs_urls()}
 
     evaluation_info: dict[str, float|int] | _TemplateResponse = get_evaluation(request, full_evaluation=True, domain=domain)
@@ -203,6 +244,12 @@ def full_evaluation(request: Request, domain: str) -> _TemplateResponse:
 
 @app.get('/favicon.ico', include_in_schema=False)
 async def favicon() -> FileResponse:
+    """
+    Serves the favicon for the web interface.
+
+    Returns:
+        FileResponse: The favicon.ico file to be displayed in the browser tab.
+    """
     return FileResponse(favicon_path)
 
 @app.get("/")
@@ -221,19 +268,20 @@ def index(request: Request) -> _TemplateResponse:
 @app.get("/parse_eval")
 def parse_eval_url(request: Request, url: str | None = None, domain: str | None = None, full_eval: bool | None = None) -> _TemplateResponse:
     """
-    Parses a provided URL, fetches its gold standard, and evaluates parsing performance.
+    Handles form submissions for parsing URLs and evaluating performance.
 
-    Validates the URL, triggers the parsing via the backend API, checks for an existing
-    gold standard, and if found, requests an evaluation (token, length, ROUGE, BLEU) 
-    comparing the parsed text against the gold text.
+    Validates the input parameters and routes the request either to a full domain
+    evaluation or a single URL parsing and evaluation.
 
     Args:
         request (Request): The incoming FastAPI request.
-        url (str): The target URL submitted via form data to be parsed and evaluated.
+        url (str | None, optional): The target URL to parse. Defaults to None.
+        domain (str | None, optional): The selected domain from the dropdown. Defaults to None.
+        full_eval (bool | None, optional): Flag indicating if a full evaluation was requested. Defaults to None.
 
     Returns:
         _TemplateResponse: The rendered 'index.html' template containing parsing results 
-            and evaluation metrics if a gold standard is found.
+            and evaluation metrics, or an error template for malformed inputs.
     """
     if (full_eval and not domain or (full_eval and domain and url) or (domain and not full_eval)):
         return report_error(request, "index.html", code=400, err_msg="Malformed request")

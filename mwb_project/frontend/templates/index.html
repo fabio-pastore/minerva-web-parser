@@ -49,7 +49,7 @@
             <form id="formid" method="get" action="/parse_eval" onsubmit="display_loading_div()">
                 <label class="font-semibold">URL to parse: </label>
                 <input class="rounded-lg border border-black px-1 font-light" type="text" name="url" id='url_input' placeholder="https://mydomain.org/webpage" size="50" required>
-                <button class="rounded-lg border border-black px-4 bg-gray-200 font-light cursor-pointer disabled:bg-gray-300 disabled:text-gray-600 disabled:cursor-not-allowed" type="submit">Parse</button><br>
+                <button class="rounded-lg border border-black px-2 bg-gray-200 font-light cursor-pointer disabled:bg-gray-300 disabled:text-gray-600 disabled:cursor-not-allowed" type="submit">Parse</button><br>
                 <label class="font-semibold">Select domain: </label>
                 <select class="mt-2 rounded-lg border border-black font-light px-1" id="domain_sel" onchange="document.getElementById('full_eval').disabled = this.value === ''">
                     <option value="" selected>Select a domain</option>
@@ -57,7 +57,7 @@
                         <option value="{{ domain }}">{{ domain }}</option>
                         {% endfor %}       
                 </select>
-                <button class="rounded-lg border border-black px-4 bg-gray-200 font-light cursor-pointer disabled:bg-gray-300 disabled:text-gray-600 disabled:cursor-not-allowed" type="button" id="full_eval" disabled onclick="full_evaluation()">Full evaluation</button>
+                <button class="rounded-lg border border-black px-2 bg-gray-200 font-light cursor-pointer disabled:bg-gray-300 disabled:text-gray-600 disabled:cursor-not-allowed" type="button" id="full_eval" disabled onclick="full_evaluation()">Full evaluation</button>
                 <br>
                 <label class="font-semibold">Select GS: </label> 
                 <select class="mt-2 rounded-lg border border-black font-light px-1 disabled:bg-gray-300 disabled:text-gray-600 disabled:cursor-not-allowed" id="gs_select" disabled onchange="document.querySelector('input[name=url]').value = this.value">
@@ -199,7 +199,7 @@
         data-requested_url = '{{ requested_url }}'
         data-err = '{{ error }}'
         data-gs_urls = '{{ gs_data | tojson | safe }}'
-        data-gs_text = '{{ gs_text }}''
+        data-gs_found = '{{ "true" if gs_text else "false" }}'
         >
     </div>
 </body>
@@ -264,7 +264,7 @@
             }, 50);
 
             setTimeout(() => {
-                if (hidden_data.dataset.gs_text === '' && hidden_data.dataset.requested_url !== '') alert("No GS exists for the given URL.")
+                if (hidden_data.dataset.gs_found === 'false' && hidden_data.dataset.requested_url !== '') alert("No GS exists for the given URL.")
             }, 425);
             
         }

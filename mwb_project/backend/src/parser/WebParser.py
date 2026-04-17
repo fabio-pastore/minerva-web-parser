@@ -10,8 +10,21 @@ class WebParser(ABC):
     
     @abstractmethod
     def __init__(self, targets: list[str], tag_excl: list[str], md_gen: markdown_generation_strategy.MarkdownGenerationStrategy, 
-                 md_gen_opt: dict[str, bool], css_excl: str, gs_data: list[dict]):
-        
+                 md_gen_opt: dict[str, bool], css_excl: str, gs_data: dict[str, list[dict]]):
+        """
+        Initializes the base configuration for a WebParser.
+
+        Sets up the crawler and browser configurations, including target elements, exclusions,
+        and markdown generation strategies. Also loads the Gold Standard data in memory.
+
+        Args:
+            targets (list[str]): CSS selectors for the elements to target during parsing.
+            tag_excl (list[str]): HTML tags to exclude from the extracted content.
+            md_gen (MarkdownGenerationStrategy): The strategy object used to convert HTML to Markdown.
+            md_gen_opt (dict[str, bool]): Options configuring the markdown generator behavior.
+            css_excl (str): CSS selectors indicating specific elements to ignore.
+            gs_data (dict[str, list[dict]]): A mapping of domains to their respective gold standard entries.
+        """
         self.browser_cfg : BrowserConfig = BrowserConfig(headless = True)
         self.md_gen_opt: dict[str, bool] = md_gen_opt
         self.crawler_cfg : CrawlerRunConfig = CrawlerRunConfig (
@@ -41,7 +54,7 @@ class WebParser(ABC):
             None
         """
         with open("domains.json", mode='r', encoding='UTF-8') as fin:
-            cls.__SUPPORTED_DOMAINS = json.load(fin).get("domains")
+            cls.__SUPPORTED_DOMAINS: set[str] = set(json.load(fin).get("domains"))
     
     @classmethod
     def get_supported_domains(cls) -> set[str]:
