@@ -232,7 +232,7 @@ def full_evaluation(request: Request, domain: str) -> _TemplateResponse:
         _TemplateResponse: The rendered 'index.html' template containing the full domain evaluation metrics,
             or an error template if the retrieval fails.
     """
-    context_dict: dict[str, any] = {"request": request, "gs_data": get_gs_urls()}
+    context_dict: dict[str, any] = {"request": request, "gs_data": get_gs_urls(), "full_eval": True, "domain": domain}
 
     evaluation_info: dict[str, float|int] | _TemplateResponse = get_evaluation(request, full_evaluation=True, domain=domain)
     if isinstance(evaluation_info, _TemplateResponse): # should get_evaluation() call report_error()

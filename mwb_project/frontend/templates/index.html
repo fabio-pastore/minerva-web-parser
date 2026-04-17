@@ -3,10 +3,10 @@
 <head>
     <title>WebParser v-1.0</title>
     <style type="text/css">
-
         body {
             margin: 0px;
             padding: 0px;
+            background-color: #f9fafb; /* bg-gray-50 */
         }
 
         .loading-div {
@@ -15,61 +15,95 @@
             top: 0;
             left: 0; 
             opacity: 0;
-            background-color: rgba(128, 128, 128, 0.65);
-            z-index: 1;
+            background-color: rgba(17, 24, 39, 0.7); 
+            backdrop-filter: blur(4px); 
+            z-index: 50;
             width: 100vw;
             height: 100vh;
             color: white;
-            align-content: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .appear {
             opacity: 1;
-            transition: opacity 0.3s;
+            transition: opacity 0.3s ease-in-out;
             pointer-events: auto;
         }
-
     </style>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 </head>
-<body>
+<body class="text-gray-800 antialiased font-sans">
+    
     <div id="ldiv" class="loading-div">
-        <div style="padding-top: 20px; padding-bottom: 20px; padding-left: 50px; padding-right: 50px; max-width: fit-content; margin: 0 auto 0 auto; max-height: fit-content; font-size: 13px; text-align: center; align-content: center; font-family: Arial, Helvetica, sans-serif; background-color: rgba(0, 0, 0, 1);">
-            <div style="font-size: 30px; margin: 0 auto 0 auto"><b>Loading...</b></div>
-            <b>This may take a while</b>
+        <div class="bg-gray-900 px-8 py-6 rounded-2xl shadow-2xl text-center border border-gray-700">
+            <svg class="animate-spin h-10 w-10 text-blue-500 mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <div class="text-2xl font-bold mb-1">Loading...</div>
+            <div class="text-gray-400 text-sm">This may take a while</div>
         </div>
     </div>
-    <div class="bg-gray-50">
-        <div class="text-center p-4 w-full shadow-md border-black bg-gray-100">
-                <h1 class="text-4xl font-semibold">WebParser v-1.0</h1>
-                <h6 class="text-sm font-light">Made by Fabio Pastore, Yihao Wu & Alessandro Zannone</h6>
-        </div><br>
-        <br>
-        <div class="w-[95vw] text-center m-auto rounded-lg shadow-md border p-4 border-black bg-gray-100">
+
+    <header class="bg-white shadow-sm border-b border-gray-200">
+        <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 text-center">
+            <h1 class="text-4xl font-bold text-gray-900 tracking-tight">WebParser <span class="text-blue-600">v-1.0</span></h1>
+            <p class="mt-1 text-sm text-gray-500 font-normal">Made by Fabio Pastore, Yihao Wu & Alessandro Zannone</p>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 space-y-8">
+        
+        <section class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <form id="formid" method="get" action="/parse_eval" onsubmit="display_loading_div()">
-                <label class="font-semibold">URL to parse: </label>
-                <input class="rounded-lg border border-black px-1 font-light" type="text" name="url" id='url_input' placeholder="https://mydomain.org/webpage" size="50" required>
-                <button class="rounded-lg border border-black px-2 bg-gray-200 font-light cursor-pointer disabled:bg-gray-300 disabled:text-gray-600 disabled:cursor-not-allowed" type="submit">Parse</button><br>
-                <label class="font-semibold">Select domain: </label>
-                <select class="mt-2 rounded-lg border border-black font-light px-1" id="domain_sel" onchange="document.getElementById('full_eval').disabled = this.value === ''">
-                    <option value="" selected>Select a domain</option>
-                        {% for domain in gs_data.keys() %}
-                        <option value="{{ domain }}">{{ domain }}</option>
-                        {% endfor %}       
-                </select>
-                <button class="rounded-lg border border-black px-2 bg-gray-200 font-light cursor-pointer disabled:bg-gray-300 disabled:text-gray-600 disabled:cursor-not-allowed" type="button" id="full_eval" disabled onclick="full_evaluation()">Full evaluation</button>
-                <br>
-                <label class="font-semibold">Select GS: </label> 
-                <select class="mt-2 rounded-lg border border-black font-light px-1 disabled:bg-gray-300 disabled:text-gray-600 disabled:cursor-not-allowed" id="gs_select" disabled onchange="document.querySelector('input[name=url]').value = this.value">
-                    <option value="">No domain selected</option>
-                </select>
-                <br>
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+                    
+                    <div class="md:col-span-10">
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">URL to parse:</label>
+                        <input class="w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" 
+                               type="text" name="url" id='url_input' placeholder="https://mydomain.org/webpage" required>
+                    </div>
+                    <div class="md:col-span-2">
+                        <button class="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-300 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed" type="submit">
+                            Parse
+                        </button>
+                    </div>
+
+                    <div class="md:col-span-10">
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Select domain:</label>
+                        <select class="w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none transition" 
+                                id="domain_sel" onchange="document.getElementById('full_eval').disabled = this.value === ''">
+                            <option value="" selected>Select a domain</option>
+                            {% for domain in gs_data.keys() | sort(domain) %}
+                            <option value="{{ domain }}">{{ domain }}</option>
+                            {% endfor %}       
+                        </select>
+                    </div>
+                    <div class="md:col-span-2">
+                        <button class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-300 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed" 
+                                type="button" id="full_eval" disabled onclick="full_evaluation()">
+                            Full evaluation
+                        </button>
+                    </div>
+
+                    <div class="md:col-span-12">
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Select GS:</label> 
+                        <select class="w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none transition disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed" 
+                                id="gs_select" disabled onchange="document.querySelector('input[name=url]').value = this.value">
+                            <option value="">No domain selected</option>
+                        </select>
+                    </div>
+
+                </div>
             </form>
+        </section>
+
+        <div id="err_span_container" class="bg-red-50 border border-red-200 rounded-lg p-4 text-center text-red-600 {% if not error %}hidden{% endif %}">
+            <span id="err_span" class="text-sm font-medium"><b>[ERROR]</b> {{error if error else ''}}</span>  
         </div>
-        <div class="mt-4" style="width: 100%; text-align: center;">
-            <span id="err_span" style="display: none; color: red; font-size: 14px"><b>[ERROR] {{error if error else ''}}</b></span>  
-        </div>
-        <br>
+
         {% macro metric_slider(label, val) %}
         {% set v = (val | default(0)) | float %}
         {% set distance = (1.0 - v) | abs %}
@@ -77,218 +111,214 @@
         {% set goodness = 0 if goodness < 0 else goodness %}
         {% set hue = (goodness * 120) | round | int %}
         {% set position = (v * 100) | round(2) %}
-        <div class="mb-3 text-left px-2 text-sm">
-            <div class="flex justify-between items-end mb-1">
-                <span class="font-medium">{{ label }}:</span>
-                <b style="--metric-color: {{ hue }}; color: hsl(var(--metric-color), 85%, 38%);">
+        <div class="mb-4 text-left">
+            <div class="flex justify-between items-end mb-1 px-1 text-sm">
+                <span class="font-medium text-gray-600">{{ label }}:</span>
+                <b style="--metric-color: {{ hue }}; color: hsl(var(--metric-color), 75%, 45%);">
                     {{ v | round(4) }}
                 </b>
             </div>
-            <div class="h-2 w-full bg-gradient-to-r from-red-500 via-yellow-400 to-green-500 rounded-full relative border border-gray-300">
-                <div class="absolute h-3.5 w-1 bg-black top-[-3px] rounded-sm"
+            <div class="h-2 w-full bg-gradient-to-r from-red-400 via-yellow-400 to-emerald-400 rounded-full relative shadow-inner bg-gray-200">
+                <div class="absolute h-4 w-1.5 bg-gray-800 shadow-sm top-[-4px] rounded-sm transition-all duration-500 ease-out"
                     style="--pos: {{ position }}%; left: clamp(0%, var(--pos), 97%);">
                 </div>
             </div>
         </div>
         {% endmacro %}
-        <div class="grid w-[95vw] m-auto grid-cols-4 text-center justify-center bg-white shadow-md border border-black rounded-lg">
-    
-        <div class="p-4 border-r flex flex-col">
-            <b class="mb-4 text-lg">Token level eval</b>
-            {% if tk_precision %}
-            {{ metric_slider('precision', tk_precision) }}
-            {{ metric_slider('recall', tk_recall) }}
-            {{ metric_slider('f1', tk_f1) }}
-            
-            <div class="mt-auto pt-4 text-xs">
-                <i>(target: 1.0)</i>
-            </div>
-            {% else %}
-            <div class="my-auto">N/A</div>
-            {% endif %}
-        </div>
 
-        <div class="p-4 border-r flex flex-col text-sm text-left">
-            <b class="mb-4 text-lg text-center text-base font-bold">Length eval</b>
-            {% if l_word_length_ratio %}
-            <div class="flex justify-between px-2 border-b border-gray-100 py-1"><span>Golden characters:</span> <b>{{ l_golden_chars | round(3) if l_golden_chars is not none else 'N/A'}}</b></div>
-            <div class="flex justify-between px-2 border-b border-gray-100 py-1"><span>Parsed characters:</span> <b>{{ l_parsed_chars | round(3) if l_parsed_chars is not none else 'N/A'}}</b></div>
-            <div class="flex justify-between px-2 border-b border-gray-100 py-1"><span>Golden words:</span> <b>{{ l_golden_words | round(3) if l_golden_words is not none else 'N/A'}}</b></div>
-            <div class="flex justify-between px-2 border-b border-gray-100 py-1"><span>Parsed words:</span> <b>{{ l_parsed_words | round(3) if l_parsed_words is not none else 'N/A'}}</b></div>
-            <div class="flex justify-between px-2 mb-4 py-1"><span>Character length ratio:</span> <b>{{ l_char_length_ratio | round(3) }}</b></div>
-            
-            {{ metric_slider('Word length ratio', l_word_length_ratio) }}
-            
-            <div class="mt-auto pt-4 text-xs text-center">
-                <b>NOTE:</b> <i>CLR > 1.0</i> is <u>expected</u>, since we are including links in the parser output.
-            </div>
-            {% else %}
-            <div class="my-auto text-center text-base">N/A</div>
-            {% endif %}
-        </div>
-
-        <div class="p-4 border-r flex flex-col">
-            <b class="mb-4 text-lg text-center">Rouge eval</b>
-            {% if rouge1_f1 %}
-            {{ metric_slider('rouge1_f1', rouge1_f1) }}
-            {{ metric_slider('rouge2_f1', rouge2_f1) }}
-            {{ metric_slider('rougeL_f1', rougeL_f1) }}
-            
-            <div class="mt-auto pt-4 text-xs">
-                <i>(target: 1.0)</i>
-            </div>
-            {% else %}
-            <div class="my-auto">N/A</div>
-            {% endif %}
-        </div>
-
-        <div class="p-4 flex flex-col">
-            <b class="mb-4 text-lg text-center">Bleu eval</b>
-            {% if bleu1 %}
-            {{ metric_slider('bleu1', bleu1) }}
-            {{ metric_slider('bleu2', bleu2) }}
-            {{ metric_slider('bleu3', bleu3) }}
-            {{ metric_slider('bleu4', bleu4) }}
-            {{ metric_slider('bleu_avg', bleu_avg) }}
-            
-            <div class="mt-auto pt-4 text-xs">
-                <i>(target: 1.0)</i>
-            </div>
-            {% else %}
-            <div class="my-auto">N/A</div>
-            {% endif %}
-        </div>
-
-        </div>
-            <br>
-            <div class="w-[95vw] m-auto overflow-x-hidden">
-                <div class="grid grid-cols-2 text-center text-3xl">
-                <div class="p-3 font-semibold">
-                    GS text
+        <section class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div class="grid grid-cols-1 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-gray-200">
+                
+                <div class="p-6 flex flex-col">
+                    <h3 class="mb-5 text-lg font-bold text-gray-800 border-b pb-2">Token Level</h3>
+                    {% if tk_precision %}
+                        {{ metric_slider('Precision', tk_precision) }}
+                        {{ metric_slider('Recall', tk_recall) }}
+                        {{ metric_slider('F1 Score', tk_f1) }}
+                        <div class="mt-auto pt-4 text-xs text-gray-400 text-center uppercase tracking-wider font-semibold">Target: 1.0</div>
+                    {% else %}
+                        <div class="m-auto text-gray-400 italic">No data</div>
+                    {% endif %}
                 </div>
-                    <div class="p-3 font-semibold">
-                        Parsed text
-                    </div>
+
+                <div class="p-6 flex flex-col text-sm">
+                    <h3 class="mb-5 text-lg font-bold text-gray-800 border-b pb-2">Length Eval</h3>
+                    {% if l_word_length_ratio %}
+                        <ul class="space-y-2 mb-4 text-gray-600">
+                            <li class="flex justify-between"><span>Golden chars:</span> <b class="text-gray-900">{{ l_golden_chars | round(3) if l_golden_chars is not none else 'N/A'}}</b></li>
+                            <li class="flex justify-between"><span>Parsed chars:</span> <b class="text-gray-900">{{ l_parsed_chars | round(3) if l_parsed_chars is not none else 'N/A'}}</b></li>
+                            <li class="flex justify-between"><span>Golden words:</span> <b class="text-gray-900">{{ l_golden_words | round(3) if l_golden_words is not none else 'N/A'}}</b></li>
+                            <li class="flex justify-between"><span>Parsed words:</span> <b class="text-gray-900">{{ l_parsed_words | round(3) if l_parsed_words is not none else 'N/A'}}</b></li>
+                            <li class="flex justify-between pt-2 border-t border-gray-100"><span>Char ratio:</span> <b class="text-gray-900">{{ l_char_length_ratio | round(3) }}</b></li>
+                        </ul>
+                        {{ metric_slider('Word ratio', l_word_length_ratio) }}
+                        <div class="mt-auto pt-2 text-xs text-gray-500 text-center leading-tight">
+                            <b>Note:</b> CLR > 1.0 is expected, since we are including links in the parsers' output.
+                        </div>
+                    {% else %}
+                        <div class="m-auto text-gray-400 italic">No data</div>
+                    {% endif %}
                 </div>
-                <div class="grid grid-cols-2 divide-x divide-black h-96 border border-black shadow-lg mb-6 text-xsm font-light
-                bg-gray-100 text-justify break-all">
-                    <div class="p-2 overflow-y-auto h-full">
-                        {{gs_text if gs_text else ''}}
-                    </div>
-                    
-                    <div class="p-2 overflow-y-auto h-full">
-                        {{parsed_text if parsed_text else ''}}
-                    </div>
+
+                <div class="p-6 flex flex-col">
+                    <h3 class="mb-5 text-lg font-bold text-gray-800 border-b pb-2">ROUGE Eval</h3>
+                    {% if rouge1_f1 %}
+                        {{ metric_slider('ROUGE-1 F1', rouge1_f1) }}
+                        {{ metric_slider('ROUGE-2 F1', rouge2_f1) }}
+                        {{ metric_slider('ROUGE-L F1', rougeL_f1) }}
+                        <div class="mt-auto pt-4 text-xs text-gray-400 text-center uppercase tracking-wider font-semibold">Target: 1.0</div>
+                    {% else %}
+                        <div class="m-auto text-gray-400 italic">No data</div>
+                    {% endif %}
+                </div>
+
+                <div class="p-6 flex flex-col">
+                    <h3 class="mb-5 text-lg font-bold text-gray-800 border-b pb-2">BLEU Eval</h3>
+                    {% if bleu1 %}
+                        {{ metric_slider('BLEU-1', bleu1) }}
+                        {{ metric_slider('BLEU-2', bleu2) }}
+                        {{ metric_slider('BLEU-3', bleu3) }}
+                        {{ metric_slider('BLEU-4', bleu4) }}
+                        {{ metric_slider('BLEU Avg', bleu_avg) }}
+                        <div class="mt-auto pt-4 text-xs text-gray-400 text-center uppercase tracking-wider font-semibold">Target: 1.0</div>
+                    {% else %}
+                        <div class="m-auto text-gray-400 italic">No data</div>
+                    {% endif %}
+                </div>
+
+            </div>
+        </section>
+
+        <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col h-[500px]">
+                <div class="bg-gray-50 border-b border-gray-200 p-3 flex items-center justify-between">
+                    <h2 class="font-bold text-gray-700">GS text</h2>
+                    <span class="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded font-mono">Gold standard</span>
+                </div>
+                <div class="p-4 overflow-y-auto grow text-sm font-mono leading-relaxed text-gray-800 whitespace-pre-wrap break-words">
+                    {{- gs_text if gs_text else 'No GS text to display.' -}}
                 </div>
             </div>
 
-            <div class="w-[50vw] m-auto overflow-x-hidden text-center">
-                <div class="p-3 font-semibold text-3xl">
-                    HTML text
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col h-[500px]">
+                <div class="bg-gray-50 border-b border-gray-200 p-3 flex items-center justify-between">
+                    <h2 class="font-bold text-gray-700">Parsed text</h2>
+                    <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded font-mono">Markdown</span>
                 </div>
-                <div class="h-96 border border-black shadow-lg mb-2 text-xsm font-light bg-gray-100 text-justify break-all">
-                    <div class="p-2 overflow-y-auto h-full">
-                        {{html_text if html_text else ''}}
-                    </div>
+                <div class="p-4 overflow-y-auto grow text-sm font-mono leading-relaxed text-gray-800 whitespace-pre-wrap break-words">
+                    {{- parsed_text if parsed_text else 'No parsed text to display.' -}}
                 </div>
             </div>
-        </div>
-        <br>
-    </div>
+        </section>
+
+        <section class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col h-[400px]">
+            <div class="bg-gray-50 border-b border-gray-200 p-3 flex items-center justify-between">
+                <h2 class="font-bold text-gray-700">HTML text</h2>
+                <span class="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded font-mono">HTML</span>
+            </div>
+            <div class="p-4 overflow-y-auto grow text-sm text-gray-500 text-justify break-all bg-gray-50">
+                {{- html_text if html_text else 'No HTML source code to display.' -}}
+            </div>
+        </section>
+
+    </main>
+
     <div id="hidden_j2_data" style="display: none;" 
-        data-requested_url = '{{ requested_url }}'
-        data-err = '{{ error }}'
-        data-gs_urls = '{{ gs_data | tojson | safe }}'
-        data-gs_found = '{{ "true" if gs_text else "false" }}'
+        data-requested_url='{{ requested_url }}'
+        data-err='{{ error }}'
+        data-gs_urls='{{ gs_data | tojson | safe }}'
+        data-gs_found='{{ "true" if gs_text else "false" }}'
+        data-full_eval='{{ full_eval }}'
+        data-domain='{{ domain }}'
         >
     </div>
-</body>
-<script>
-    const MAX_LOAD_TIME = 120000 // 2 minutes
-    const url_input = document.getElementById("url_input");
-    const hidden_data = document.getElementById("hidden_j2_data");
-    const load_div = document.getElementById("ldiv");
-    const err_span = document.getElementById("err_span");
-    const gs_data = JSON.parse(hidden_data.dataset.gs_urls);
 
-    function full_evaluation() {
-        display_loading_div();
-        url_input.disabled = true;
-        url_input.required = false;
-        const queryParams = new URLSearchParams();
-        const domain = document.getElementById("domain_sel").value;
-        queryParams.append('domain', domain);
-        queryParams.append('full_eval', true);
-        window.location.href = `/parse_eval?${queryParams.toString()}`; // redirect
-    }
+    <script>
+        const MAX_LOAD_TIME = 120000;
+        const MAX_DISPLAYED_URL_LENGTH = 65;
+        const url_input = document.getElementById("url_input");
+        const hidden_data = document.getElementById("hidden_j2_data");
+        const load_div = document.getElementById("ldiv");
+        const err_span = document.getElementById("err_span");
+        const err_container = document.getElementById("err_span_container");
+        const gs_data = JSON.parse(hidden_data.dataset.gs_urls);
 
-    function load_gs_urls() {
-         if (!gs_data) return;
+        function full_evaluation() {
+            display_loading_div();
+            url_input.disabled = true;
+            url_input.required = false;
+            const queryParams = new URLSearchParams();
+            const domain = document.getElementById("domain_sel").value;
+            queryParams.append('domain', domain);
+            queryParams.append('full_eval', true);
+            window.location.href = `/parse_eval?${queryParams.toString()}`;
+        }
 
-         const selectDomain = document.getElementById('domain_sel');
-         const selectURL = document.getElementById('gs_select');
+        function load_gs_urls() {
+             if (!gs_data) return;
+             const selectDomain = document.getElementById('domain_sel');
+             const selectURL = document.getElementById('gs_select');
 
-         selectDomain.addEventListener('change', (e) => {
-            const selectedDomain = e.target.value;
-            selectURL.innerHTML = '<option value="">Select a GS URL</option>';
+             selectDomain.addEventListener('change', (e) => {
+                const selectedDomain = e.target.value;
+                selectURL.innerHTML = '<option value="">Select a GS URL</option>';
 
-            if (selectedDomain && gs_data[selectedDomain]) {
-                selectURL.disabled = false;
-                gs_data[selectedDomain].forEach(url => {
-                    const new_option = document.createElement('option');
-                    new_option.value = url;
-                    new_option.textContent = url.length > 65 ? url.substring(0, 65) + '...' : url;
-                    selectURL.appendChild(new_option);
-                });
+                if (selectedDomain && gs_data[selectedDomain]) {
+                    selectURL.disabled = false;
+                    gs_data[selectedDomain].forEach(url => {
+                        const new_option = document.createElement('option');
+                        new_option.value = url;
+                        new_option.textContent = url.length > MAX_DISPLAYED_URL_LENGTH ? url.substring(0, MAX_DISPLAYED_URL_LENGTH) + '...' : url;
+                        selectURL.appendChild(new_option);
+                    });
+                }
+                else selectURL.disabled = true;
+             });
+        }
+
+        function load_page() {
+            if (hidden_data.dataset.requested_url !== '' || (hidden_data.dataset.full_eval !== 'false' && hidden_data.dataset.domain !== '')) {
+                url_input.value = hidden_data.dataset.requested_url;
+                load_div.style.transition = "none";
+                load_div.classList.add("appear");
+                
+                err_container.className = "bg-green-50 border border-green-200 rounded-lg p-4 text-center text-green-700";
+                err_span.innerHTML = hidden_data.dataset.full_eval === '' ? "<b>[INFO] OK (200)</b> - URL parsing and evaluation completed successfully."
+                                                                          : `<b>[INFO] OK (200)</b> - Full evaluation completed successfully for domain '${hidden_data.dataset.domain}'.`
+
+                load_gs_urls();
+
+                setTimeout(() => {
+                    load_div.style.transition = "opacity 0.3s ease-in-out";
+                    load_div.classList.remove("appear");
+                }, 50);
+
+                setTimeout(() => {
+                    if (hidden_data.dataset.gs_found === 'false' && hidden_data.dataset.requested_url !== '') {
+                        alert("[INFO] Could not retrieve GS for the given URL.");
+                    }
+                }, 425);
+            } else {
+                load_gs_urls();
             }
-            else selectURL.disabled = true;
-         });
 
-    }
+            if (hidden_data.dataset.err !== '') {
+                err_container.className = "bg-red-50 border border-red-200 rounded-lg p-4 text-center text-red-600";
+            }
+        }
 
-    function load_page() {
-
-        if (hidden_data.dataset.requested_url !== '') {
-            url_input.value = hidden_data.dataset.requested_url;
-            load_div.style.transition = "none";
+        function display_loading_div() {
+            err_container.className = "hidden"; 
             load_div.classList.add("appear");
-            err_span.style.display = 'inline'; 
-            err_span.style.color = 'green';
-            err_span.innerHTML = "<b>[INFO] OK (200)</b>";
-
-            load_gs_urls();
-
-            setTimeout(() => {
-                load_div.style.transition = "opacity 0.3s";
-                load_div.classList.remove("appear");
-            }, 50);
-
-            setTimeout(() => {
-                if (hidden_data.dataset.gs_found === 'false' && hidden_data.dataset.requested_url !== '') alert("No GS exists for the given URL.")
-            }, 425);
             
+            setTimeout(() => {
+                load_div.classList.remove("appear");
+                err_container.className = "bg-red-50 border border-red-200 rounded-lg p-4 text-center text-red-600";
+                err_span.innerHTML = "<b>[ERROR]</b> Request timeout. Please try again later.";
+            }, MAX_LOAD_TIME);
         }
 
-        else {
-            load_gs_urls();
-        }
-
-        if (hidden_data.dataset.err !== '') {
-            err_span.style.display = 'inline';
-        }
-    }
-
-    function display_loading_div() {
-        err_span.style.display = 'none'; // hide error message 
-        load_div.classList.add("appear");
-        setTimeout(() => {
-            load_div.classList.remove("appear");
-            err_span.innerHTML = "<b>[ERROR] Something went wrong. Please try again later. (REQUEST_TIMEOUT) </b>";
-            err_span.style.display = 'inline';
-        }, MAX_LOAD_TIME);
-    }
-
-    load_page();
-
-</script>
+        load_page();
+    </script>
+</body>
 </html>

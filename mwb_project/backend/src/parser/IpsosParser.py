@@ -132,7 +132,7 @@ class IpsosParser(WebParser):
 
         md: str = re.sub(IpsosParser.__NEWSLETTER_REGEX, "", md, flags=re.IGNORECASE | re.MULTILINE)
         md: str = re.sub(IpsosParser.__ORDINALS_REGEX, r"\1\2", md, flags=re.IGNORECASE) # join erroneously separated tokens during HTML to Markdown conversion (e.g. '3' and 'rd') 
-        md: str = re.sub(r'[\x00-\x1F\x7F]', ' ', md) # remove leftover control characters from failed HTML parse, which may happen in rare occasions
+        md: str = re.sub(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]', ' ', md) # remove leftover control characters from failed HTML parse, which may happen in rare occasions, except for \n, \r and \t
         md: str = re.sub(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}", "[EMAIL REMOVED]", md) # remove emails for privacy
         md: str = re.sub(r"\+?\d[\d\s-]{8,}\d", "[PHONE REMOVED]", md) # remove phone numbers for privacy
         
