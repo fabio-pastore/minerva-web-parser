@@ -2,7 +2,7 @@
 
 <br>
 <p align="center">
-  <img src="https://i.postimg.cc/tJxN1MQs/mwb-logo.png" width="200" alt="MWB project logo">
+  <img width="200" height="200" alt="mwb-project-logo" src="https://github.com/user-attachments/assets/e3c9515a-ef12-42e3-a367-9f3ee60fe93b" />
 </p>
 
 ## Project Overview
@@ -33,7 +33,9 @@ A ParserFactory class is employed to dynamically pre-instantiate all required pa
 
 Lastly, in order to mitigate performance bottlenecks and improve backend performance, I/O operations are optimized by pre-loading the gold standard .json datasets into memory during the server startup phase, whereas code reliability, readability, and maintainability are guaranteed through comprehensive Google-style docstrings and type hinting throughout the projects' entire codebase. 
 
----
+## 
 
-#### Developed by:
-Fabio Pastore, Yihao Wu & Alessandro Zannone
+#### Contributors 
+* _Fabio Pastore_
+* _Yihao Wu_
+* _Alessandro Zannone_
