@@ -13,8 +13,10 @@ import json
 
 EXIT_ERROR_CODE: int = 1
 URL_REGEX: str = "^https?:\\/\\/(?:www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b(?:[-a-zA-Z0-9()@:%_\\+.~#?&\\/=]*)$"
+DEBUG: bool = True
 
-print("[API-SERVER] | [INFO] Initializing...")
+if (DEBUG):
+    print("[API-SERVER] | [INFO] Initializing...")
 
 # load gs data in memory on server startup to avoid I/O reads for each request
 gs_data: dict[str, list[dict]] = {}
@@ -26,13 +28,15 @@ for domain in WebParser.get_supported_domains():
             domain_gs: list[dict] = json.load(fin)
             gs_data[domain] = domain_gs
     except FileNotFoundError as err:
-        print(f"[API-SERVER] | [ERROR] Failed to find path '{file_path}': {repr(err)}")
-        print("[API-SERVER] | [FATAL] Unable to complete backend initialization. Shutting down...")
+        if (DEBUG):
+            print(f"[API-SERVER] | [ERROR] Failed to find path '{file_path}': {repr(err)}")
+            print("[API-SERVER] | [FATAL] Unable to complete backend initialization. Shutting down...")
         exit(EXIT_ERROR_CODE)
 
 if not len(gs_data): # check for empty gs_data list
-    print(f"[API-SERVER] | [ERROR] Failed to load GS data.")
-    print("[API-SERVER] | [FATAL] Unable to complete backend initialization. Shutting down...")
+    if (DEBUG):
+        print(f"[API-SERVER] | [ERROR] Failed to load GS data.")
+        print("[API-SERVER] | [FATAL] Unable to complete backend initialization. Shutting down...")
     exit(EXIT_ERROR_CODE)
 
 # initialize parsers on server startup to reduce overhead, instead of doing it for each parse request
@@ -41,12 +45,14 @@ parse_handler: dict[str, WebParser] | None = None
 try:
     parse_handler = ParserFactory().get_domain_handlers(gs_data)
 except ParserFactoryException as err:
-    print(f"[API-SERVER] | [ERROR] Failed to initialize domain handlers for parsing: {repr(err)}")
-    print("[API-SERVER] | [FATAL] Unable to complete backend initialization. Shutting down...")
+    if (DEBUG):
+        print(f"[API-SERVER] | [ERROR] Failed to initialize domain handlers for parsing: {repr(err)}")
+        print("[API-SERVER] | [FATAL] Unable to complete backend initialization. Shutting down...")
     exit(EXIT_ERROR_CODE)
 
-print("[API-SERVER] | [INFO] Successfully initialized GS data and required parsers.")
-print("[API-SERVER] | [INFO] Backend initialization complete.")
+if (DEBUG):
+    print("[API-SERVER] | [INFO] Successfully initialized GS data and required parsers.")
+    print("[API-SERVER] | [INFO] Backend initialization complete.")
 
 # define pydantic models
 class ParseOutput(BaseModel):
@@ -91,7 +97,8 @@ async def parse_helper(url: str, raw_html: str | None = None) -> dict[str, str]:
         raise HTTPException(status_code=400, detail="malformed URL")
     
     domain_to_parse: str = url.split("/")[2]
-    print(f"[API-SERVER] | [INFO] Extracted domain from URL: {domain_to_parse}")
+    if (DEBUG):
+        print(f"[API-SERVER] | [INFO] Extracted domain from URL: {domain_to_parse}")
 
     if domain_to_parse not in WebParser.get_supported_domains():
         raise HTTPException(status_code=400, detail="domain not supported")
@@ -99,7 +106,8 @@ async def parse_helper(url: str, raw_html: str | None = None) -> dict[str, str]:
     try:
         parse_output: dict[str, str] = await parse_handler[domain_to_parse].parse_url(url, raw_html=raw_html)
     except WebParserException as err:
-        print(f"[API-SERVER] | [ERROR] Failed to parse URL '{url}': {repr(err)}")
+        if (DEBUG):
+            print(f"[API-SERVER] | [ERROR] Failed to parse URL '{url}': {repr(err)}")
         raise HTTPException(status_code=500, detail="URL parse failed")
 
     if (len(parse_output) == 0):
@@ -126,7 +134,8 @@ async def parse_url(url: str) -> ParseOutput:
     Raises:
         HTTPException: If the URL is malformed, the domain is unsupported, or the URL is unreachable.
     """
-    print(f"[API-SERVER] | [INFO] Received parsing request for URL: {url}")
+    if (DEBUG):
+        print(f"[API-SERVER] | [INFO] Received parsing request for URL: {url}")
 
     parse_output: dict[str, str] = await parse_helper(url)
     
@@ -140,7 +149,8 @@ async def parse_raw_html(req: RawHTMLParseRequest) -> ParseOutput:
     url: str = req.url
     html_text: str = req.html_text
 
-    print(f"[API-SERVER] | [INFO] Received raw HTML parsing request for URL: {url}")
+    if (DEBUG):
+        print(f"[API-SERVER] | [INFO] Received raw HTML parsing request for URL: {url}")
 
     parse_output: dict[str, str] = await parse_helper(url, raw_html=html_text)
 

@@ -6,7 +6,7 @@
 </p>
 
 ## Project Overview
-**Minerva Web Parser (MWB)** is a highly **modular** system engineered for the automated acquisition and analysis of documents from heterogeneous web sources. The primary objective is to **extract clean, relevant textual data** in Markdown format, **evaluate** its extraction quality against a predefined gold standard (GS) and present the results on a simple webpage interface. The system was developed within the context of the "*Laboratorio di Ingegneria Informatica*" course at **Sapienza University of Rome**, serving as a foundational data pipeline component for the **national LLM, Minerva**.
+**Minerva Web Parser (MWP)** is a highly **modular** system engineered for the automated acquisition and analysis of documents from heterogeneous web sources. The primary objective is to **extract clean, relevant textual data** in Markdown format, **evaluate** its extraction quality against a predefined gold standard (GS) and present the results on a simple webpage interface. The system was developed within the context of the "*Laboratorio di Ingegneria Informatica*" course at **Sapienza University of Rome**, serving as a foundational data pipeline component for the **national LLM, Minerva**.
 ## System architecture
 The system adopts a microservice architecture orchestrated via _Docker_ compose, ensuring **component isolation** and **deployment reproducibility**. It is divided into two primary services:
 * **Backend API server:** Implemented using _Python 3.12_ and _FastAPI_. It utilizes the _Crawl4AI_ library alongside _Playwright_ for advanced web scraping and DOM manipulation, as well as _Pydantic_ for rigorous data validation and serialization.
@@ -31,7 +31,7 @@ To quantitatively assess the performance of the extraction process, the system c
 ## Optimized parsing and evaluation
 A ParserFactory class is employed to dynamically pre-instantiate all required parsers with respect to supported domains. By constructing each WebParser object at server startup, we allow each parse request to be instantly handled by the respective parser, without creating a new object, thus improving memory consumption and request completion latency.   
 
-Lastly, in order to mitigate performance bottlenecks and improve backend performance, I/O operations are optimized by pre-loading the gold standard .json datasets into memory during the server startup phase, whereas code reliability, readability, and maintainability are guaranteed through comprehensive Google-style docstrings and type hinting throughout the projects' entire codebase. 
+Lastly, in order to mitigate performance bottlenecks and improve backend performance, I/O operations are optimized by pre-loading the gold standard .json datasets into memory during the server startup phase, whereas code reliability, readability, and maintainability are guaranteed through comprehensive Google-style docstrings and type hinting throughout the project's entire codebase. 
 
 ## 
 
