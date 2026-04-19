@@ -36,6 +36,7 @@ class BaseEvaluator(ABC):
         """
 
         out_text = re.sub(r'(\[[^\]]*\])\(\s*https?://(?:[^()]|\([^()]*\))*\)', r'\1', out_text) # remove json dumped hypertext links
+        out_text = re.sub(r'(\[[^\]]*\])\(\s*(?:[^()]|\([^()]*\))*\)', r'\1', out_text) # remove relative webpage links obtained by raw HTML parsing
         out_text = re.sub(r'\(\s*https?://(?:[^()]|\([^()]*\))*\)', ' ', out_text) # remove json dumped cite note links, if any have survived previous cleanup
         out_text = re.sub(r'\\n|\\r', ' ', out_text) # for GS input 
         out_text = out_text.translate(punctuation_remover) # removes punctuation

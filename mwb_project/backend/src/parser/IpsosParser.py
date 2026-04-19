@@ -78,7 +78,7 @@ class IpsosParser(WebParser):
     '''
     
     # lowest score obtained on all GS URL evaluations, we compare this with the strictest eval (BLEU) to check if we are using an outdated GS for an updated page
-    __MIN_EVAL_SCORE: float = 0.953 
+    __MIN_EVAL_SCORE: float = 0.984 
     
     def __init__(self, gs_data: dict[str, list[dict]]):
         """
@@ -138,7 +138,7 @@ class IpsosParser(WebParser):
         
         return md.strip()
     
-    async def parse_url(self, url: str, **kwargs) -> dict[str, str]:
+    async def parse_url(self, url: str, **kwargs: any) -> dict[str, str]:
         """
         Crawls an Ipsos webpage, extracts content, and converts it to markdown.
 
@@ -157,9 +157,10 @@ class IpsosParser(WebParser):
         Raises:
             WebParserException: If either one of the internal fallback parses fails irrecoverably.
         """
-        fallback: bool = kwargs.get('fallback', False)
-        updated_conf: CrawlerRunConfig = kwargs.get('updated_conf')
-        local_parse: bool = kwargs.get('local_parse', False)
+        fallback: bool = kwargs.get("fallback", False)
+        updated_conf: CrawlerRunConfig = kwargs.get("updated_conf")
+        local_parse: bool = kwargs.get("local_parse", False)
+        raw_html: str | None = kwargs.get("raw_html", None)
 
         async with AsyncWebCrawler(config = self.browser_cfg) as crawler:
 
@@ -188,8 +189,13 @@ class IpsosParser(WebParser):
                 
                 if not (html_text and gs_text):
                     raise WebParserException(f"[IpsosParser] Could not find GS for URL '{url}' during fallback local parse.")
-                                        
-            result : CrawlResult = await crawler.arun(url if (not local_parse) else f"raw:{html_text}", config = self.crawler_cfg if (not fallback) else updated_conf)
+            
+            crawl_source: str = ""
+            if (raw_html): crawl_source = f"raw:{raw_html}"
+            elif (local_parse): crawl_source = f"raw:{html_text}"
+            else: crawl_source = url
+
+            result : CrawlResult = await crawler.arun(crawl_source, config = self.crawler_cfg if (not fallback) else updated_conf)
             
             success: bool = result.success
 
@@ -211,8 +217,9 @@ class IpsosParser(WebParser):
                     return await self.parse_url(
                         url, 
                         fallback=True, 
-                        updated_conf=self.crawler_cfg.clone(target_elements = ['.hero__title', '.hero__description', 'main']),
-                        local_parse=local_parse  
+                        updated_conf=self.crawler_cfg.clone(target_elements = ['main']), # fixed title and description duplication in updated config, since main already captures them
+                        local_parse=local_parse,
+                        raw_html=raw_html  
                     ) 
                 else: 
                     # this was already a fallback parse, return data anyway but display warning
@@ -226,7 +233,7 @@ class IpsosParser(WebParser):
                 print(f"[IpsosParser] Successfully parsed webpage titled '{webpage_title}' for a total of {body_length} characters.")
                 if (self.md_gen_opt.get("ignore_links")):
                     print("[IpsosParser] | [WARNING] Links are currently being ignored! To change this behaviour, set 'ignore_links' in MARKDOWN_GEN_OPTIONS to False.")
-
+            
             if (not local_parse and gs_text and any(score < IpsosParser.__MIN_EVAL_SCORE for score in list(BleuEvaluator().evaluate(gs_text, page_markdown).model_dump().values()))):
                 if (self._DEBUG):
                     print(f"[IpsosParser] | [WARNING] Computed preliminary evaluation score (BLEU) below minimum score for domain '{IpsosParser.__SUPPORTED_DOMAIN}' ({IpsosParser.__MIN_EVAL_SCORE}). The page (or article) may have been edited. Attempting fallback parse based on local GS data.")
@@ -234,16 +241,17 @@ class IpsosParser(WebParser):
                     url, 
                     local_parse=True, 
                     fallback=fallback, 
-                    updated_conf=updated_conf
+                    updated_conf=updated_conf,
+                    raw_html=None
                 )
 
-            raw_html: str = result.html # original page HTML content
+            extracted_html: str = result.html # original page HTML content
 
             ret: dict[str, str] = {
                 "url": url,
                 "domain": domain,
                 "title": webpage_title,
-                "html_text": raw_html,
+                "html_text": extracted_html,
                 "parsed_text": page_markdown
             }
 

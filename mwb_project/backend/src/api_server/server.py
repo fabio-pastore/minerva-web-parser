@@ -69,6 +69,10 @@ class GSEntry(BaseModel):
 class ListGSEntry(BaseModel):
     gold_standard: list[GSEntry]
 
+class RawHTMLParseRequest(BaseModel):
+    url: str
+    html_text: str
+
 class EvaluationInput(BaseModel):
     parsed_text: str
     gold_text: str
@@ -80,6 +84,29 @@ class ParseEvaluation(BaseModel):
     bleu_eval: BleuEvaluator.BleuEval
 
 app = FastAPI() # initialize endpoints
+
+async def parse_helper(url: str, raw_html: str | None = None) -> dict[str, str]:
+
+    if not (re.match(URL_REGEX, url) and url.count("/") >= 3):
+        raise HTTPException(status_code=400, detail="malformed URL")
+    
+    domain_to_parse: str = url.split("/")[2]
+    print(f"[API-SERVER] | [INFO] Extracted domain from URL: {domain_to_parse}")
+
+    if domain_to_parse not in WebParser.get_supported_domains():
+        raise HTTPException(status_code=400, detail="domain not supported")
+    
+    try:
+        parse_output: dict[str, str] = await parse_handler[domain_to_parse].parse_url(url, raw_html=raw_html)
+    except WebParserException as err:
+        print(f"[API-SERVER] | [ERROR] Failed to parse URL '{url}': {repr(err)}")
+        raise HTTPException(status_code=500, detail="URL parse failed")
+
+    if (len(parse_output) == 0):
+        raise HTTPException(status_code=400, detail="unreachable URL")
+    
+    return parse_output
+    
 
 @app.get("/parse")
 async def parse_url(url: str) -> ParseOutput:
@@ -101,24 +128,22 @@ async def parse_url(url: str) -> ParseOutput:
     """
     print(f"[API-SERVER] | [INFO] Received parsing request for URL: {url}")
 
-    if not (re.match(URL_REGEX, url) and url.count("/") >= 3):
-        raise HTTPException(status_code=400, detail="malformed URL")
+    parse_output: dict[str, str] = await parse_helper(url)
     
-    domain_to_parse: str = url.split("/")[2]
-    print(f"[API-SERVER] | [INFO] Extracted domain from URL: {domain_to_parse}")
+    return ParseOutput(url=parse_output.get("url"), domain=parse_output.get("domain"), title=parse_output.get("title"),
+                       html_text=parse_output.get("html_text"), parsed_text=parse_output.get("parsed_text"))
 
-    if domain_to_parse not in WebParser.get_supported_domains():
-        raise HTTPException(status_code=400, detail="domain not supported")
-    
-    try:
-        parse_output: dict[str, str] = await parse_handler[domain_to_parse].parse_url(url)
-    except WebParserException as err:
-        print(f"[API-SERVER] | [ERROR] Failed to parse URL '{url}': {repr(err)}")
-        raise HTTPException(status_code=500, detail="URL parse failed")
+# added new POST endpoint for grader compatibility
+@app.post("/parse")
+async def parse_raw_html(req: RawHTMLParseRequest) -> ParseOutput:
 
-    if (len(parse_output) == 0):
-        raise HTTPException(status_code=400, detail="unreachable URL")
-    
+    url: str = req.url
+    html_text: str = req.html_text
+
+    print(f"[API-SERVER] | [INFO] Received raw HTML parsing request for URL: {url}")
+
+    parse_output: dict[str, str] = await parse_helper(url, raw_html=html_text)
+
     return ParseOutput(url=parse_output.get("url"), domain=parse_output.get("domain"), title=parse_output.get("title"),
                        html_text=parse_output.get("html_text"), parsed_text=parse_output.get("parsed_text"))
 

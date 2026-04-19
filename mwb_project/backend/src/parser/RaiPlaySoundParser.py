@@ -22,7 +22,7 @@ class RaiPlaySoundParser(WebParser):
     '''
 
     # lowest score obtained on all GS URL evaluations, we compare this with the strictest eval (BLEU) to check if we are using an outdated GS for an updated page
-    __MIN_EVAL_SCORE: float = 0.923
+    __MIN_EVAL_SCORE: float = 0.922
 
     '''
     NOTE: also added css and tag exclusions for dynamic pages like:
@@ -58,7 +58,7 @@ class RaiPlaySoundParser(WebParser):
     def get_supported_domain(cls) -> str:
         return cls.__SUPPORTED_DOMAIN
     
-    async def parse_url(self, url: str, **kwargs) -> dict[str, str]:
+    async def parse_url(self, url: str, **kwargs: any) -> dict[str, str]:
         """
         Crawls a RaiPlaySound webpage, extracts content, and converts it to markdown.
 
@@ -77,6 +77,7 @@ class RaiPlaySoundParser(WebParser):
             WebParserException: If the internal fallback parse fails irrecoverably.
         """
         local_parse: bool = kwargs.get("local_parse", False)
+        raw_html: str | None = kwargs.get("raw_html", None)
 
         async with AsyncWebCrawler(config=self.browser_cfg) as crawler:
         # Run the crawler on a URL
@@ -101,8 +102,13 @@ class RaiPlaySoundParser(WebParser):
                 
                 if not (html_text and gs_text):
                     raise WebParserException(f"[RaiPlaySoundParser] Could not find GS for URL '{url}' during fallback local parse.")
-                                        
-            result : CrawlResult = await crawler.arun(url if (not local_parse) else f"raw:{html_text}", config = self.crawler_cfg)
+
+            crawl_source: str = ""
+            if (raw_html): crawl_source = f"raw:{raw_html}"
+            elif (local_parse): crawl_source = f"raw:{html_text}"
+            else: crawl_source = url
+
+            result : CrawlResult = await crawler.arun(crawl_source, config = self.crawler_cfg)
 
             success: bool = result.success
 
@@ -126,15 +132,15 @@ class RaiPlaySoundParser(WebParser):
             if (not local_parse and gs_text and any(score < RaiPlaySoundParser.__MIN_EVAL_SCORE for score in list(BleuEvaluator().evaluate(gs_text, page_markdown).model_dump().values()))):
                 if (self._DEBUG):
                     print(f"[RaiPlaySoundParser] | [WARNING] Computed preliminary evaluation score (BLEU) below minimum score for domain '{RaiPlaySoundParser.__SUPPORTED_DOMAIN}' ({RaiPlaySoundParser.__MIN_EVAL_SCORE}). The page (or article) may have been edited. Attempting fallback parse based on local GS data.")
-                return await self.parse_url(url, local_parse=True)
+                return await self.parse_url(url, local_parse=True, raw_html=raw_html)
 
-            raw_html: str = result.html # original page HTML content
+            extracted_html: str = result.html # original page HTML content
 
             ret: dict[str, str] = {
                 "url": url,
                 "domain": domain,
                 "title": webpage_title,
-                "html_text": raw_html,
+                "html_text": extracted_html,
                 "parsed_text": page_markdown
             }
 

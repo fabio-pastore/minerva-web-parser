@@ -77,7 +77,7 @@ class WebParser(ABC):
         pass
         
     @abstractmethod
-    async def parse_url(self, url: str) -> dict[str, str]:
+    async def parse_url(self, url: str, **kwargs: any) -> dict[str, str]:
         """
         Abstract method to parse a given URL.
 
