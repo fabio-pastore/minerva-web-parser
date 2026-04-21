@@ -1,4 +1,4 @@
-# MWB - Minerva Web Parser
+# MWP - Minerva Web Parser
 
 <br>
 <p align="center">
