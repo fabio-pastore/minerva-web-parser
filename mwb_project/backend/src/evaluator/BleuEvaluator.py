@@ -18,17 +18,15 @@ class BleuEvaluator(BaseEvaluator):
 
     def __ngram_precision(self, ref_toks: list[str], hyp_toks: list[str], n: int) -> float:
         """
-        Counts the occurrences of n-gram sequences in a list of tokens.
-
-        Creates contiguous sequences of length 'n' from the token list and maps 
-        each sequence to its absolute frequency. If n=1, it acts as a simple word counter.
+        Calculates the clipped n-gram precision between hypothesis and reference tokens.
 
         Args:
-            tokens (list[str]): The ordered list of tokens to process.
-            n (int): The length of the n-gram (e.g., 1 for unigrams, 2 for bigrams).
+            ref_toks (list[str]): The sequence of tokens from the gold reference text.
+            hyp_toks (list[str]): The sequence of tokens from the parsed hypothesis text.
+            n (int): The n-gram order to evaluate.
 
         Returns:
-            dict[tuple, int]: A dictionary where keys are n-gram tuples and values are their occurrence counts.
+            float: The clipped precision score for the specified n-gram order.
         """
         if len(hyp_toks) < n: # not enough tokens for n-gram counting, unlikely since n ranges from 1 to 4 (for n in range(1, 5))
             return 0.0

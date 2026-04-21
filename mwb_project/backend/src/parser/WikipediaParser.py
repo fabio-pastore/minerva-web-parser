@@ -11,7 +11,7 @@ class WikipediaParser(WebParser):
     __TARGETS: list[str] = ['.mw-parser-output']
     __MARKDOWN_REGEX: str = r"##\s+(?:See also|Notes|References|External links|Voci correlate|Note|Bibliografia|Collegamenti esterni|Altri progetti|Pagine correlate|Strumenti)" 
     # this is necessary since apparently some pages contain an arbitrary number of whitespaces between "##" and "Notes, References, etc."
-    __CITE_NOTES_REGEX: str = r'\[\[[[0-9]+\]\]\(\s*https?://(?:[^()]|\([^()]*\))*\)'
+    __CITE_NOTES_REGEX: str = r'\[\[[[0-9]+\]\]\(\s*https?://(?:[^()]|\([^()]*\))*\)|\[\[[0-9]+\]\]\(#cite_note-[\w\-]+(?:-\d+)?\)'
 
     __MARKDOWN_GEN_OPTIONS: dict[str, bool] = {
         'ignore_images': True, 

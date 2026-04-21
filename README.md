@@ -8,7 +8,7 @@
 ## Project Overview
 **Minerva Web Parser (MWP)** is a highly **modular** system engineered for the automated acquisition and analysis of documents from heterogeneous web sources. The primary objective is to **extract clean, relevant textual data** in Markdown format, **evaluate** its extraction quality against a predefined gold standard (GS) and present the results on a simple webpage interface. The system was developed within the context of the "*Laboratorio di Ingegneria Informatica*" course at **Sapienza University of Rome**, serving as a foundational data pipeline component for the **national LLM, Minerva**.
 ## System architecture
-The system adopts a microservice architecture orchestrated via _Docker_ compose, ensuring **component isolation** and **deployment reproducibility**. It is divided into two primary services:
+A microservice architecture orchestrated via _Docker_ compose is employed, thus ensuring **component isolation** and **deployment reproducibility**. It is divided into two primary services:
 * **Backend API server:** Implemented using _Python 3.12_ and _FastAPI_. It utilizes the _Crawl4AI_ library alongside _Playwright_ for advanced web scraping and DOM manipulation, as well as _Pydantic_ for rigorous data validation and serialization.
 * **Frontend web interface:** Developed using _FastAPI_ to serve _Jinja2_ templates, utilizing _Tailwind CSS_ to provide a clean, responsive, and structured user interface.
 
