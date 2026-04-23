@@ -277,7 +277,7 @@ async def full_gs_eval(domain: str) -> ParseEvaluation:
     for entry in data:
         url: str = entry.get("url")
         gold_text: str = entry.get("gold_text")
-        try: parse_output: dict[str, str] = await parse_handler[domain].parse_url(url, local_parse=True, raw_html=entry.get("html_text"))
+        try: parse_output: dict[str, str] = await parse_handler[domain].parse_url(url, raw_html=entry.get("html_text"))
         except WebParserException as err:
             if (DEBUG):
                 print(f"[API-SERVER] | [ERROR] Failed raw HTML parse for URL '{url}': {repr(err)}")

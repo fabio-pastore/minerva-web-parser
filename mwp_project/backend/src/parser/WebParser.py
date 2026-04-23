@@ -5,8 +5,10 @@ from abc import ABC, abstractmethod
 class WebParser(ABC):
 
     _DEBUG: bool = True # print _DEBUG messages
+    _LOAD_DOM: str = 'domcontentloaded'
+    _HTML_DELAY: float = 0.0
+    _WORD_COUNT_THRESHOLD: int = 10
     __SUPPORTED_DOMAINS: set[str] | None = None
-    __WORD_COUNT_THRESHOLD: int = 10
     
     @abstractmethod
     def __init__(self, targets: list[str], tag_excl: list[str], md_gen: markdown_generation_strategy.MarkdownGenerationStrategy, 
@@ -25,7 +27,14 @@ class WebParser(ABC):
             css_excl (str): CSS selectors indicating specific elements to ignore.
             gs_data (dict[str, list[dict]]): A mapping of domains to their respective gold standard entries.
         """
-        self.browser_cfg : BrowserConfig = BrowserConfig(headless = True)
+        self.browser_cfg : BrowserConfig = BrowserConfig(
+            headless = True, 
+            text_mode=True, 
+            light_mode=True, 
+            avoid_ads=True, 
+            avoid_css=True, 
+            java_script_enabled=False
+        )
         self.md_gen_opt: dict[str, bool] = md_gen_opt
         self.crawler_cfg : CrawlerRunConfig = CrawlerRunConfig (
             target_elements = targets,    
@@ -34,9 +43,13 @@ class WebParser(ABC):
             excluded_selector = css_excl,
             only_text = False, 
             remove_forms = True, 
-            remove_consent_popups = True, 
-            word_count_threshold = WebParser.__WORD_COUNT_THRESHOLD,
-            cache_mode = CacheMode.BYPASS
+            remove_consent_popups = False, 
+            word_count_threshold = WebParser._WORD_COUNT_THRESHOLD,
+            cache_mode = CacheMode.BYPASS,
+            delay_before_return_html=WebParser._HTML_DELAY,
+            wait_until=WebParser._LOAD_DOM,
+            magic=False,
+            wait_for_images=False
         )
         self.gs_data: list[dict] = gs_data
 
