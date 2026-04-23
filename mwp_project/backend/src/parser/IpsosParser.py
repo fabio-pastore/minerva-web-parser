@@ -234,7 +234,7 @@ class IpsosParser(WebParser):
                 if (self.md_gen_opt.get("ignore_links")):
                     print("[IpsosParser] | [WARNING] Links are currently being ignored! To change this behaviour, set 'ignore_links' in MARKDOWN_GEN_OPTIONS to False.")
             
-            if (not local_parse and gs_text and any(score < IpsosParser.__MIN_EVAL_SCORE for score in list(BleuEvaluator().evaluate(gs_text, page_markdown).model_dump().values()))):
+            if (not local_parse and not raw_html and gs_text and any(score < IpsosParser.__MIN_EVAL_SCORE for score in list(BleuEvaluator().evaluate(gs_text, page_markdown).model_dump().values()))):
                 if (self._DEBUG):
                     print(f"[IpsosParser] | [WARNING] Computed preliminary evaluation score (BLEU) below minimum score for domain '{IpsosParser.__SUPPORTED_DOMAIN}' ({IpsosParser.__MIN_EVAL_SCORE}). The page (or article) may have been edited. Attempting fallback parse based on local GS data.")
                 return await self.parse_url(

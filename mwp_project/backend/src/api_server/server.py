@@ -252,8 +252,8 @@ async def full_gs_eval(domain: str) -> ParseEvaluation:
     """
     Evaluates parsing performance across all gold standard URLs for a specific domain.
 
-    Parses all available URLs in the gold standard dataset for the domain and computes 
-    the average token, length, ROUGE, and BLEU evaluation metrics.
+    Parses the stored (local) HTML for each gold standard entry of the domain and
+    computes the average token, length, ROUGE, and BLEU evaluation metrics.
 
     Args:
         domain (str): The domain to perform the full dataset evaluation on.
@@ -268,19 +268,26 @@ async def full_gs_eval(domain: str) -> ParseEvaluation:
         raise HTTPException(status_code=400, detail="domain not supported")
     
     evals: list[ParseEvaluation] = []
-    gs: dict[str, str] = {}
 
     if domain not in gs_data:
         raise HTTPException(status_code=404, detail=f"gold standard not found for domain '{domain}'")
 
     data: list[dict] = gs_data[domain]
-    for entry in data:
-        gs[entry.get('url')] = entry.get('gold_text')
 
-    for url in gs.keys():
-        output: ParseOutput = await parse_url(url)
-        parsed_text: str = output.parsed_text
-        evals.append(evaluate_parsing(EvaluationInput(parsed_text=parsed_text, gold_text=gs.get(url))))
+    for entry in data:
+        url: str = entry.get("url")
+        gold_text: str = entry.get("gold_text")
+        try: parse_output: dict[str, str] = await parse_handler[domain].parse_url(url, local_parse=True)
+        except WebParserException as err:
+            if (DEBUG):
+                print(f"[API-SERVER] | [ERROR] Failed local parse for URL '{url}': {repr(err)}")
+            raise HTTPException(status_code=500, detail=f"local parse failed for URL '{url}'")
+
+        if not parse_output:
+            raise HTTPException(status_code=500, detail=f"local parse produced no output for URL '{url}'")
+
+        parsed_text: str = parse_output.get("parsed_text")
+        evals.append(evaluate_parsing(EvaluationInput(parsed_text=parsed_text, gold_text=gold_text)))
 
     if not evals:
         raise HTTPException(status_code=500, detail="unable to retrieve gold standard data")

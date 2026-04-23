@@ -328,14 +328,24 @@ def parse_eval_url(request: Request, url: str | None = None, domain: str | None 
     if not (gs_not_found):
         
         gold_text: str = data.get("gold_text")
+        gs_html_text: str = data.get("html_text")
 
         gs_info: dict[str, str] = {
             "gs_text": gold_text
         }
 
         context_dict.update(gs_info)
+        
+        local_parse_payload: dict[str, str] = {"url": url, "html_text": gs_html_text}
+        local_parse_data: dict[str, dict|int|bool|str] = post_data(API_BACKEND_URL + "/parse", json_payload=local_parse_payload)
 
-        evaluation_info: dict[str, float|int] = get_evaluation(request, gold_text, parsed_text)
+        if not local_parse_data.get("response_ok"):
+            return report_error(request, "index.html", code=local_parse_data.get("status_code"),
+                                err_msg=f"Failed to retrieve offline parse of GS HTML for URL '{url}' from API server: {local_parse_data.get('response_data').get('detail')}")
+
+        eval_parsed_text: str = local_parse_data.get("response_data").get("parsed_text")
+
+        evaluation_info: dict[str, float|int] = get_evaluation(request, gold_text, eval_parsed_text)
 
         if isinstance(evaluation_info, _TemplateResponse): # should get_evaluation() call report_error()
             return evaluation_info
