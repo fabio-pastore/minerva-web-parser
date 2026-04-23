@@ -295,14 +295,8 @@ def parse_eval_url(request: Request, url: str | None = None, domain: str | None 
     if not (re.match(URL_REGEX, url) and url.count("/") >= 3):
         return report_error(request, "index.html", code=400, err_msg="Malformed URL")
     
-    request_url: str = API_BACKEND_URL + "/parse"
-    data: dict[str, dict|int|bool|str] = get_data(request_url, params={"url": url})
-
-    if not data.get("response_ok"):
-        return report_error(request, "index.html", code=data.get("status_code"), err_msg=f"Failed to retrieve parsing of URL '{url}' from API server: {data.get("response_data").get("detail")}")
-    
-    html_text: str = data.get("response_data").get("html_text")
-    parsed_text: str = data.get("response_data").get("parsed_text")
+    html_text: str | None = None
+    parsed_text: str | None = None
     # cannot use get_data() in this case, since we must check if backend server returns HTTP status code 404 for gold standard NOT FOUND
     request_url: str = API_BACKEND_URL + "/gold_standard"
     data: None = None
@@ -323,7 +317,7 @@ def parse_eval_url(request: Request, url: str | None = None, domain: str | None 
     else:
         gs_not_found = False
     
-    context_dict: dict[str, any] = {"request": request, "html_text": html_text, "parsed_text": parsed_text, "requested_url": url, "gs_data": get_gs_urls()}
+    context_dict: dict[str, any] = {"request": request, "requested_url": url, "gs_data": get_gs_urls()}
 
     if not (gs_not_found):
         
@@ -351,6 +345,22 @@ def parse_eval_url(request: Request, url: str | None = None, domain: str | None 
             return evaluation_info
 
         context_dict.update(evaluation_info)
+
+        html_text: str = gs_html_text
+        parsed_text: str = eval_parsed_text
+
+    else:
+
+        request_url: str = API_BACKEND_URL + "/parse"
+        data: dict[str, dict|int|bool|str] = get_data(request_url, params={"url": url})
+
+        if not data.get("response_ok"):
+            return report_error(request, "index.html", code=data.get("status_code"), err_msg=f"Failed to retrieve parsing of URL '{url}' from API server: {data.get("response_data").get("detail")}")
+
+        html_text: str = data.get("response_data").get("html_text")
+        parsed_text: str = data.get("response_data").get("parsed_text")
+
+    context_dict.update({"html_text": html_text, "parsed_text": parsed_text})
 
     return templates.TemplateResponse(name="index.html", request=request, context=context_dict)
 

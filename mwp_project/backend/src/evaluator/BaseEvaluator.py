@@ -35,13 +35,12 @@ class BaseEvaluator(ABC):
         (NOTE: this is possible only if the word is in the form "a[bold(b)]" and not "a[bold(b)]a", since in markdown the latter is translated as a**b** a)
         """
 
-        out_text = re.sub(r'(\[[^\]]*\])\(\s*https?://(?:[^()]|\([^()]*\))*\)', r'\1', out_text) # remove json dumped hypertext links
-        out_text = re.sub(r'(\[[^\]]*\])\(\s*(?:[^()]|\([^()]*\))*\)', r'\1', out_text) # remove relative webpage links obtained by raw HTML parsing
-        out_text = re.sub(r'\(\s*https?://(?:[^()]|\([^()]*\))*\)', ' ', out_text) # remove json dumped cite note links, if any have survived previous cleanup
+        out_text = re.sub(r'\[((?:[^\[\]]|\[[^\[\]]*\])*)\]\(\s*(?:[^()]|\([^()]*\))*\)', r' \1 ', out_text) # remove URL, relative and raw HTML links
         out_text = re.sub(r'\\n|\\r', ' ', out_text) # for GS input 
         out_text = out_text.translate(punctuation_remover) # removes punctuation
         out_text = out_text.translate(phonetic_sym_remover) # removes rare phonetic symbols 
         out_text = re.sub(r'[^\w\s]', ' ', out_text) # remove symbols like —, •, → that string.punctuation might have missed
+        out_text = re.sub(r'\s+', ' ', out_text)
 
         return out_text
 
