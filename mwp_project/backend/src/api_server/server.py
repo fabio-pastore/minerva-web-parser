@@ -277,14 +277,14 @@ async def full_gs_eval(domain: str) -> ParseEvaluation:
     for entry in data:
         url: str = entry.get("url")
         gold_text: str = entry.get("gold_text")
-        try: parse_output: dict[str, str] = await parse_handler[domain].parse_url(url, local_parse=True)
+        try: parse_output: dict[str, str] = await parse_handler[domain].parse_url(url, local_parse=True, raw_html=entry.get("html_text"))
         except WebParserException as err:
             if (DEBUG):
-                print(f"[API-SERVER] | [ERROR] Failed local parse for URL '{url}': {repr(err)}")
-            raise HTTPException(status_code=500, detail=f"local parse failed for URL '{url}'")
+                print(f"[API-SERVER] | [ERROR] Failed raw HTML parse for URL '{url}': {repr(err)}")
+            raise HTTPException(status_code=500, detail=f"raw HTML parse failed for URL '{url}'")
 
         if not parse_output:
-            raise HTTPException(status_code=500, detail=f"local parse produced no output for URL '{url}'")
+            raise HTTPException(status_code=500, detail=f"raw HTML parse produced no output for URL '{url}'")
 
         parsed_text: str = parse_output.get("parsed_text")
         evals.append(evaluate_parsing(EvaluationInput(parsed_text=parsed_text, gold_text=gold_text)))

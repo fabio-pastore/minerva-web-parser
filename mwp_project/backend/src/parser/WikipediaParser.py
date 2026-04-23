@@ -153,7 +153,7 @@ class WikipediaParser(WebParser):
             if (not local_parse and not raw_html and gs_text and any(score < WikipediaParser.__MIN_EVAL_SCORE for score in list(BleuEvaluator().evaluate(gs_text, page_markdown).model_dump().values()))):
                 if (self._DEBUG):
                     print(f"[WikipediaParser] | [WARNING] Computed preliminary evaluation score (BLEU) below minimum score for domain '{WikipediaParser.__SUPPORTED_DOMAIN}' ({WikipediaParser.__MIN_EVAL_SCORE}). The page (or article) may have been edited. Attempting fallback parse based on local GS data.")
-                return await self.parse_url(url, local_parse=True, raw_html=raw_html)
+                return await self.parse_url(url, local_parse=True, raw_html=None)
 
             extracted_html: str = result.html # original page HTML content
 

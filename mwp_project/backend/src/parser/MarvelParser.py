@@ -19,7 +19,10 @@ class MarvelParser(WebParser):
     }
 
     __PAGE_LOAD: str = 'networkidle'
+    __LOCAL_PAGE_LOAD: str = 'domcontentloaded'
     __PAGE_TIMEOUT: int = 30000
+    __LOCAL_HTML_LOAD_TIME: float = 0.25
+    __DEFAULT_HTML_LOAD_TIME: float = 1
 
     __CSS_EXCLUSIONS: str = '''
     nav, footer, header,
@@ -60,7 +63,6 @@ class MarvelParser(WebParser):
         )
         # Update crawler config for Marvel parsing
         self.crawler_cfg.remove_consent_popups = False
-        self.crawler_cfg.wait_until = MarvelParser.__PAGE_LOAD
         self.crawler_cfg.page_timeout = MarvelParser.__PAGE_TIMEOUT
         self.crawler_cfg.magic = True  
 
@@ -133,6 +135,10 @@ class MarvelParser(WebParser):
         local_parse: bool = kwargs.get("local_parse", False)
         raw_html: str | None = kwargs.get("raw_html", None)
 
+        self.crawler_cfg.magic = raw_html is None # disable human behaviour if parse is local, speeds up parse
+        self.crawler_cfg.delay_before_return_html = MarvelParser.__LOCAL_HTML_LOAD_TIME if raw_html else MarvelParser.__DEFAULT_HTML_LOAD_TIME
+        self.crawler_cfg.wait_until = MarvelParser.__LOCAL_PAGE_LOAD if raw_html else MarvelParser.__PAGE_LOAD
+
         async with AsyncWebCrawler(config=self.browser_cfg) as crawler:
             if (url.count("/")) < 3:
                 return {}
@@ -189,7 +195,7 @@ class MarvelParser(WebParser):
             if (not local_parse and not raw_html and gs_text and any(score < MarvelParser.__MIN_EVAL_SCORE for score in list(BleuEvaluator().evaluate(gs_text, page_markdown).model_dump().values()))):
                 if (self._DEBUG):
                     print(f"[MarvelParser] | [WARNING] Computed preliminary evaluation score (BLEU) below minimum score for domain '{MarvelParser.__SUPPORTED_DOMAIN}' ({MarvelParser.__MIN_EVAL_SCORE}). The page (or article) may have been edited. Attempting fallback parse based on local GS data.")
-                return await self.parse_url(url, local_parse=True, raw_html=raw_html)
+                return await self.parse_url(url, local_parse=True, raw_html=None)
 
             extracted_html: str = result.html
 
