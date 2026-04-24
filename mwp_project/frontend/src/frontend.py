@@ -1,11 +1,10 @@
-from fastapi import FastAPI, Request, Form
+from fastapi import FastAPI, Request
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import FileResponse
 from starlette.templating import _TemplateResponse # used for type hinting in report_error()
 import requests
 from requests import Response
 import regex as re
-from urllib.parse import quote
 
 URL_REGEX: str = "^https?:\\/\\/(?:www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b(?:[-a-zA-Z0-9()@:%_\\+.~#?&\\/=]*)$"
 API_BACKEND_URL = "http://backend:8003"
@@ -271,7 +270,8 @@ def parse_eval_url(request: Request, url: str | None = None, domain: str | None 
     Handles form submissions for parsing URLs and evaluating performance.
 
     Validates the input parameters and routes the request either to a full domain
-    evaluation or a single URL parsing and evaluation.
+    evaluation or a single URL parsing and evaluation, which may be local if an entry
+    in the GS exists for the provided URL.
 
     Args:
         request (Request): The incoming FastAPI request.

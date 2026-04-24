@@ -60,9 +60,7 @@ class MarvelParser(WebParser):
             enable_stealth=True # bypass anti-bot
         )
         # Update crawler config for Marvel parsing
-        self.crawler_cfg.remove_consent_popups = False
         self.crawler_cfg.page_timeout = MarvelParser.__PAGE_TIMEOUT
-        self.crawler_cfg.magic = True
 
     @classmethod
     def get_supported_domain(cls) -> str:
@@ -135,7 +133,7 @@ class MarvelParser(WebParser):
 
         self.crawler_cfg.magic = raw_html is None # disable human behaviour simulation if parse is local, speeds up parse
         self.crawler_cfg.wait_until = self._LOAD_DOM if raw_html else MarvelParser.__PAGE_LOAD
-        self.browser_cfg.enable_stealth = raw_html is None # disable anti-bot bypass mode, speeds up parse
+        self.browser_cfg.enable_stealth = raw_html is None # disable anti-bot bypass mode if parse is local, speeds up parse
 
         async with AsyncWebCrawler(config=self.browser_cfg) as crawler:
             if (url.count("/")) < 3:
