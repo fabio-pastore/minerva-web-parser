@@ -8,7 +8,7 @@ from typing import Sequence
 
 class RougeEvaluator(BaseEvaluator):
 
-    __ROUGE_L_CAP: int = 2048 # good tradeoff between precision and execution time
+    __ROUGE_L_CAP: int = 1024 # good tradeoff between precision and execution time
     __LCS: int = 0
     __INDIVIDUAL: int = 1
     __BIGRAMS: int = 2
