@@ -2,7 +2,7 @@
 
 <br>
 <p align="center">
-  <img width="200" height="200" alt="mwb-project-logo" src="https://github.com/user-attachments/assets/e3c9515a-ef12-42e3-a367-9f3ee60fe93b" />
+  <img width="200" height="200" alt="mwp-project-logo" src="https://github.com/user-attachments/assets/e3c9515a-ef12-42e3-a367-9f3ee60fe93b" />
 </p>
 
 ## Project Overview
