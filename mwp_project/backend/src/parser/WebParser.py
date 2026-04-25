@@ -18,6 +18,7 @@ class WebParser(ABC):
 
         Sets up the crawler and browser configurations, including target elements, exclusions,
         and markdown generation strategies. Also loads the Gold Standard data in memory.
+        The following configurations also focus on maximising parsing speed.
 
         Args:
             targets (list[str]): CSS selectors for the elements to target during parsing.
@@ -96,6 +97,8 @@ class WebParser(ABC):
 
         Args:
             url (str): The target URL to parse.
+        Other:
+            **kwargs: Keyword arguments, reserved for local parsing.
 
         Returns:
             dict[str, str]: A dictionary containing parsing results such as url, domain, title, etc.

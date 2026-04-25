@@ -13,7 +13,7 @@ app = FastAPI()
 templates = Jinja2Templates(directory="templates")
 favicon_path: str = 'src/favicon.ico' 
 
-def post_data(req_url: str, json_payload: str) -> dict[str, dict|int|bool|str]:
+def post_data(req_url: str, json_payload: dict | None) -> dict[str, dict|int|bool|str]:
     """
     Sends a POST request with a JSON payload to the specified URL.
 
@@ -22,7 +22,7 @@ def post_data(req_url: str, json_payload: str) -> dict[str, dict|int|bool|str]:
 
     Args:
         req_url (str): The destination URL for the POST request.
-        json_payload (dict | None, optional): The JSON serializable data to be sent in the request body.
+        json_payload (dict | None): The JSON serializable data to be sent in the request body.
 
     Returns:
         dict[str, dict|int|bool|str]: A dictionary containing:
@@ -112,7 +112,7 @@ def report_error(request: Request, name: str, code: int, err_msg: str) -> _Templ
     """ 
     return templates.TemplateResponse(request=request, name=name, context={"request": request, "error": f"{err_msg} ({code})" if code else f"{err_msg}", "gs_data": get_gs_urls()})
 
-def get_gs_urls() -> dict[str, str]:
+def get_gs_urls() -> dict[str, list[str]]:
     """
     Retrieves a list of all Gold Standard URLs from the backend API.
 
@@ -120,10 +120,10 @@ def get_gs_urls() -> dict[str, str]:
     all available gold standard URLs.
 
     Returns:
-        list[str]: A list of URLs for which a gold standard exists.
+        dict[str, list[str]]: A dictionary with domain as key and a list of URLs for which the gold standard exists as value.
     """
     domains_data: tuple[dict, int, bool] = get_data(API_BACKEND_URL + "/domains", params={})
-    gs_domains_urls: dict[str, str] = {}
+    gs_domains_urls: dict[str, list[str]] = {}
 
     if domains_data.get("response_ok") and "domains" in domains_data.get("response_data"):
 

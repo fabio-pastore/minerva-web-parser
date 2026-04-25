@@ -66,8 +66,7 @@ class RaiPlaySoundParser(WebParser):
             Required:
                 url (str): The RaiPlaySound URL to crawl and parse.
             Other:
-                **kwargs: Keyword arguments, reserved for internal fallback parsing, 
-                          in case the page has changed since GS retrieval.
+                **kwargs: Keyword arguments, reserved for local parsing.
 
         Returns:
             dict[str, str]: A dictionary containing 'url', 'domain', 'title', 

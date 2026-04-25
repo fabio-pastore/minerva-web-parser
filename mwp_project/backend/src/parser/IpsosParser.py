@@ -146,9 +146,7 @@ class IpsosParser(WebParser):
             Required:
                 url (str): The Ipsos URL to crawl and parse.
             Other:
-                **kwargs: Keyword arguments, reserved for internal fallback parsing, 
-                          in case either the page has changed since GS retrieval or the crawl'd 
-                          URL is marked as likely malformed (i.e. too short).
+                **kwargs: Keyword arguments, reserved for local parsing.
 
         Returns:
             dict[str, str]: A dictionary containing 'url', 'domain', 'title', 

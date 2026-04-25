@@ -39,7 +39,7 @@ class WikipediaParser(WebParser):
         and regex rules tailored to clean up the content from this specific domain.
 
         Args:
-            gs_data (dict[str, list[dict]]): In-memory Gold Standard data used for fallback parsing.
+            gs_data (dict[str, list[dict]]): In-memory Gold Standard data used for local parsing.
         """
         super().__init__(
             targets = WikipediaParser.__TARGETS, 
@@ -84,8 +84,7 @@ class WikipediaParser(WebParser):
             Required:
                 url (str): The Wikipedia URL to crawl and parse.
             Other:
-                **kwargs: Keyword arguments, reserved for internal fallback parsing, 
-                          in case the page has changed since GS retrieval.
+                **kwargs: Keyword arguments, reserved for local parsing.
 
         Returns:
             dict[str, str]: A dictionary containing 'url', 'domain', 'title', 
@@ -148,11 +147,15 @@ class WikipediaParser(WebParser):
             if (self._DEBUG):
                 print(f"[WikipediaParser] Successfully parsed webpage titled '{webpage_title}' for a total of {body_length} characters.")
                 if (self.md_gen_opt.get("ignore_links")):
-                    print("[WikipediaParser] | [WARNING] Links are currently being ignored! To change this behaviour, set 'ignore_links' in MARKDOWN_GEN_OPTIONS to False.")
+                    print("[WikipediaParser] | [WARNING] Links are currently being ignored! To change this behaviour, \
+                          set 'ignore_links' in MARKDOWN_GEN_OPTIONS to False.")
 
             if (not local_parse and not raw_html and gs_text and any(score < WikipediaParser.__MIN_EVAL_SCORE for score in list(BleuEvaluator().evaluate(gs_text, page_markdown).model_dump().values()))):
                 if (self._DEBUG):
-                    print(f"[WikipediaParser] | [WARNING] Computed preliminary evaluation score (BLEU) below minimum score for domain '{WikipediaParser.__SUPPORTED_DOMAIN}' ({WikipediaParser.__MIN_EVAL_SCORE}). The page (or article) may have been edited. Attempting fallback parse based on local GS data.")
+                    print(f"[WikipediaParser] | [WARNING] Computed preliminary evaluation score (BLEU) below minimum \
+                          score for domain '{WikipediaParser.__SUPPORTED_DOMAIN}' ({WikipediaParser.__MIN_EVAL_SCORE}). \
+                            The page (or article) may have been edited. Attempting fallback parse based on local GS data.")
+                    
                 return await self.parse_url(url, local_parse=True, raw_html=None)
 
             extracted_html: str = result.html # original page HTML content

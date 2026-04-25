@@ -92,7 +92,19 @@ class ParseEvaluation(BaseModel):
 app = FastAPI() # initialize endpoints
 
 async def parse_helper(url: str, raw_html: str | None = None) -> dict[str, str]:
+    """
+    Helper function to parse a given URL and extract its content.
 
+    Args:
+        url (str): The URL to parse.
+        raw_html (str | None, optional): The raw HTML content to parse. Defaults to None.
+
+    Returns:
+        dict[str, str]: A dictionary containing the parsed content.
+
+    Raises:
+        HTTPException: If the URL is malformed, the domain is not supported, or the URL is unreachable.
+    """
     if not (re.match(URL_REGEX, url) and url.count("/") >= 3):
         raise HTTPException(status_code=400, detail="malformed URL")
     
@@ -145,7 +157,18 @@ async def parse_url(url: str) -> ParseOutput:
 # added new POST endpoint for grader compatibility
 @app.post("/parse")
 async def parse_raw_html(req: RawHTMLParseRequest) -> ParseOutput:
+    """
+    Parses the provided raw HTML content.
 
+    Args:
+        req (RawHTMLParseRequest): An object containing the URL and raw HTML text to parse.
+
+    Returns:
+        ParseOutput: An object containing the URL, domain, webpage title, raw HTML text, and the final parsed markdown text.
+
+    Raises:
+        HTTPException: If the URL is malformed, the domain is unsupported, or the URL is unreachable.
+    """
     url: str = req.url
     html_text: str = req.html_text
 
