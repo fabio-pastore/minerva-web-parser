@@ -6,7 +6,7 @@ import requests
 from requests import Response
 import regex as re
 
-URL_REGEX: str = "^https?:\\/\\/(?:www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b(?:[-a-zA-Z0-9()@:%_\\+.~#?&\\/=]*)$"
+URL_REGEX: str = r"^https?:\/\/(?:[\w-]+\.)+[a-zA-Z]{2,}(?:\/[\w\-\.\/?%&=!$'()*+,;]*)?$"
 API_BACKEND_URL = "http://backend:8003"
 
 app = FastAPI()
