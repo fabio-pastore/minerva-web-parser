@@ -34,7 +34,7 @@ class StartpageSearchEngineParser:
             url_lower = url.lower()
             
             # filter garbage links
-            if target_domain in url_lower and "startpage.com/av/proxy" not in url_lower:
+            if target_domain in url_lower and "startpage.com" not in url_lower:
                 
                 # deduplicate already seen links
                 if url not in seen:
