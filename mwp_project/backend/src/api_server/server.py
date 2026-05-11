@@ -7,6 +7,7 @@ from src.exceptions.ParserFactoryException import ParserFactoryException
 from src.exceptions.WebParserException import WebParserException
 from fastapi import FastAPI, HTTPException
 from src.parser.WebParser import WebParser
+from src.parser.StartpageSearchEngineParser import StartpageSearchEngineParser
 from pydantic import BaseModel
 import regex as re
 import json
@@ -88,6 +89,14 @@ class ParseEvaluation(BaseModel):
     length_eval: LengthEvaluator.LengthEval
     rouge_eval: RougeEvaluator.RougeEval
     bleu_eval: BleuEvaluator.BleuEval
+
+class ScrapeInput(BaseModel):
+    query: str
+    target_domain: str
+    limit: int
+
+class ScrapeOutput(BaseModel):
+    scraped_urls: list[str]
 
 app = FastAPI() # initialize endpoints
 
@@ -349,3 +358,13 @@ async def full_gs_eval(domain: str) -> ParseEvaluation:
 
     return ParseEvaluation(token_level_eval=full_token_eval, length_eval= full_length_eval, \
                            rouge_eval= full_rouge_eval, bleu_eval= full_bleu_eval)
+
+@app.post("/get_query_results")
+async def scrape_search_results(req: ScrapeInput) -> ScrapeOutput:
+    if domain not in WebParser.get_supported_domains():
+        raise HTTPException(status_code=400, detail="domain not supported")
+    
+    spp: StartpageSearchEngineParser = StartpageSearchEngineParser()
+    scraped_content: dict[str, str] = await spp.parse_query(req.query, req.target_domain, k=req.limit)
+
+    return ScrapeOutput(scraped_urls=scraped_content.get("search_result_urls", []))
