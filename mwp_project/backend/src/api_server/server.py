@@ -7,6 +7,7 @@ from src.exceptions.ParserFactoryException import ParserFactoryException
 from src.exceptions.WebParserException import WebParserException
 from fastapi import FastAPI, HTTPException
 from src.parser.WebParser import WebParser
+from src.parser.GenericParser import GenericParser
 from src.parser.StartpageSearchEngineParser import StartpageSearchEngineParser
 from pydantic import BaseModel
 import regex as re
@@ -21,6 +22,7 @@ if (DEBUG):
 
 # load gs data in memory on server startup to avoid I/O reads for each request
 gs_data: dict[str, list[dict]] = {}
+generic_parser: GenericParser = GenericParser()
 
 for domain in WebParser.get_supported_domains():
     file_path: str = "gs_data/" + domain.replace(".", "_") + "_gs.json" # same as above
@@ -361,10 +363,65 @@ async def full_gs_eval(domain: str) -> ParseEvaluation:
 
 @app.post("/get_query_results")
 async def scrape_search_results(req: ScrapeInput) -> ScrapeOutput:
-    if domain not in WebParser.get_supported_domains():
+    """
+        Scapes result URLs after searching browser for given query. To perform searches for an unspecified domain, target domain must be passed as "*". 
+
+        Args:
+            url (str): The full URL of the web page to parse.
+
+        Returns:
+            ParseOutput: An object containing the URL, domain, webpage title, 
+                raw HTML text, and the final parsed markdown text.
+
+        Raises:
+            HTTPException: If the URL is malformed or the URL is unreachable.
+    """
+    domain: str = req.target_domain
+
+    if domain not in WebParser.get_supported_domains() and not (domain == '*'): # allow generic searches
         raise HTTPException(status_code=400, detail="domain not supported")
     
     spp: StartpageSearchEngineParser = StartpageSearchEngineParser()
     scraped_content: dict[str, str] = await spp.parse_query(req.query, req.target_domain, k=req.limit)
 
     return ScrapeOutput(scraped_urls=scraped_content.get("search_result_urls", []))
+
+@app.get("/generic_parse")
+async def generic_parse(url: str) -> ParseOutput:
+    """
+        Parses the target URL and extracts its markdown content.
+
+        Args:
+            url (str): The full URL of the web page to parse.
+
+        Returns:
+            ParseOutput: An object containing the URL, domain, webpage title, 
+                raw HTML text, and the final parsed markdown text.
+
+        Raises:
+            HTTPException: If the URL is malformed or the URL is unreachable.
+    """
+    if (DEBUG):
+        print(f"[API-SERVER] | [INFO] Received parsing request for URL: {url}")
+
+    if not (re.match(URL_REGEX, url) and url.count("/") >= 3):
+        raise HTTPException(status_code=400, detail="malformed URL")
+    
+    parse_output: dict[str, str] = {} # initialize dict
+    domain_to_parse: str = url.split("/")[2]
+    if (DEBUG):
+        print(f"[API-SERVER] | [INFO] Extracted domain from URL: {domain_to_parse}")
+
+    try:
+        parse_output: dict[str, str] = await generic_parser.parse_url(url)
+
+    except WebParserException as err:
+        if (DEBUG):
+            print(f"[API-SERVER] | [ERROR] Failed to parse URL '{url}': {repr(err)}")
+        raise HTTPException(status_code=500, detail="URL parse failed")
+
+    if (len(parse_output) == 0):
+        raise HTTPException(status_code=400, detail="unreachable URL")
+    
+    return ParseOutput(url=parse_output.get("url"), domain=parse_output.get("domain"), title=parse_output.get("title"),
+                       html_text=parse_output.get("html_text"), parsed_text=parse_output.get("parsed_text"))
