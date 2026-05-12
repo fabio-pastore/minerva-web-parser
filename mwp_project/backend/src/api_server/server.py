@@ -363,7 +363,22 @@ async def full_gs_eval(domain: str) -> ParseEvaluation:
 
 @app.post("/get_query_results")
 async def scrape_search_results(req: ScrapeInput) -> ScrapeOutput:
-    if domain not in WebParser.get_supported_domains():
+    """
+        Scapes result URLs after searching browser for given query. To perform searches for an unspecified domain, target domain must be passed as "*". 
+
+        Args:
+            url (str): The full URL of the web page to parse.
+
+        Returns:
+            ParseOutput: An object containing the URL, domain, webpage title, 
+                raw HTML text, and the final parsed markdown text.
+
+        Raises:
+            HTTPException: If the URL is malformed or the URL is unreachable.
+    """
+    domain: str = req.target_domain
+
+    if domain not in WebParser.get_supported_domains() and not (domain == '*'): # allow generic searches
         raise HTTPException(status_code=400, detail="domain not supported")
     
     spp: StartpageSearchEngineParser = StartpageSearchEngineParser()
@@ -385,7 +400,7 @@ async def generic_parse(url: str) -> ParseOutput:
 
         Raises:
             HTTPException: If the URL is malformed or the URL is unreachable.
-        """
+    """
     if (DEBUG):
         print(f"[API-SERVER] | [INFO] Received parsing request for URL: {url}")
 

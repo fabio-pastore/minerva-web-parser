@@ -19,8 +19,9 @@ class StartpageSearchEngineParser:
 
     def __extract_top_k_urls(self, markdown_text: str, target_domain: str, k: int = __TOP_K_URLS) -> list[str]:
         """
-        Extracts top K unique URLs that belong to a specific domain.
-        Filters out Startpage proxy links and unrelated support pages.
+        Extracts top K unique URLs. 
+        If target_domain is '*', it returns all results minus noise.
+        Otherwise, it filters for the specific domain.
         """
         pattern = r'\[.*?\]\((https?://[^\s)]+)\)'
         all_links = re.findall(pattern, markdown_text)
@@ -28,15 +29,45 @@ class StartpageSearchEngineParser:
         unique_results = []
         seen = set()
         
+        blocklist: list[str] = [
+            "startpage.com", 
+            "support.startpage.com", 
+            "browse.startpage.com",
+            "add.startpage.com",
+            "startpage.com/av/proxy",
+            "youtube.com", # we are unable to parse the following
+            "youtu.be",
+            "tiktok.com",
+            "instagram.com",
+            "vimeo.com",
+            "dailymotion.com",
+            "twitch.tv",
+            "pinterest.com",
+            "x.com",
+            "linkedin.com",
+            "facebook.com",
+            "googleads.g.doubleclick.net", # ignore ads
+            "adclick",
+            "doubleclick.net",
+            "bingads.microsoft.com"
+        ]
+
+        forbidden_extensions: tuple[str] = ('.pdf', '.docx', '.pptx', '.zip', '.rar', '.mp4', '.mp3', '.jpg', '.jpeg', '.png', '.gif')
+        
         target_domain = target_domain.lower()
+        is_wildcard = target_domain == "*"
         
         for url in all_links:
             url_lower = url.lower()
             
-            # filter garbage links
-            if target_domain in url_lower and "startpage.com" not in url_lower:
+            if any(forbidden in url_lower for forbidden in blocklist):
+                continue
+
+            if (url_lower.endswith(forbidden_extensions)):
+                continue
+            
+            if is_wildcard or (target_domain in url_lower):
                 
-                # deduplicate already seen links
                 if url not in seen:
                     seen.add(url)
                     unique_results.append(url)
@@ -73,14 +104,14 @@ class StartpageSearchEngineParser:
                 
                 search_input = page.locator('input[name="query"]:visible, input[id="q"]:visible, input[type="text"]:visible').first
                 
-                await search_input.wait_for(state="visible", timeout=10000)
+                await search_input.wait_for(state="visible", timeout=3000)
                 await search_input.fill(query)
                 
                 async with page.expect_navigation(wait_until="domcontentloaded"):
                     await page.keyboard.press("Enter")
                     
                 try:
-                    await page.wait_for_selector('.w-gl', timeout=5000)
+                    await page.wait_for_selector('.w-gl', timeout=2000)
                 except Exception as e:
                     print("[StartpageSearchEngineParser] | [WARN] Wait for selector timed out, proceeding anyway.")
                     
