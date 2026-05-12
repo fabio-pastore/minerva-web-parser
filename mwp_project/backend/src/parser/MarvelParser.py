@@ -9,7 +9,7 @@ class MarvelParser(WebParser):
 
     __SUPPORTED_DOMAIN: str = 'www.marvel.com'
     __TAG_EXCLUSIONS: list[str] = ['style', 'script', 'noscript', 'figure', 'meta', 'img', 'svg', 'iframe']
-    __MARKDOWN_REGEX: str = r"##\s+(?:Gallery|Latest News|Buy Now|Posters|Featured Video|Big Game Trailer|Related Movie|Prepare|Teaser Trailer|Official Trailer|Final Trailer|Your Privacy Settings|Additional Links|.*?Will Return)"
+    __MARKDOWN_REGEX: str = r"##\s+(?:Gallery|Latest News|Buy Now|Posters|Featured Video|Big Game Trailer|Related Movie|Related Movies|Recommended Series|Prepare|Teaser Trailer|Official Trailer|Final Trailer|Your Privacy Settings|Additional Links|.*?Will Return)"
     # Truncate after Overview section at the next boilerplate section heading
 
     __MARKDOWN_GEN_OPTIONS: dict[str, bool] = {
@@ -22,7 +22,7 @@ class MarvelParser(WebParser):
     __PAGE_TIMEOUT: int = 15000
 
     __CSS_EXCLUSIONS: str = '''
-    nav, footer, header,
+    nav, footer, header, .Button, .Button__Label, .Promo__section, .PromoLarge
     .cookie-banner, .privacy-settings, .consent-popup,
     [class*="navigation"], [class*="footer"], [class*="header"],
     [class*="cookie"], [class*="consent"], [class*="privacy"],
@@ -173,10 +173,10 @@ class MarvelParser(WebParser):
 
             title_tag = soup.find('title')
             webpage_title: str = title_tag.get_text(strip=True) if title_tag else result.metadata.get("title", "Unknown title")
-            movie_name: str = webpage_title.split('|')[0].strip() if '|' in webpage_title else webpage_title
+            content_title: str = webpage_title.split('|')[0].strip() if '|' in webpage_title else webpage_title
 
             page_markdown: str = result.markdown.raw_markdown
-            page_markdown = self.__cleanup(page_markdown, movie_name)
+            page_markdown = self.__cleanup(page_markdown, content_title)
             body_length: int = len(page_markdown)
 
             if (self._DEBUG):
