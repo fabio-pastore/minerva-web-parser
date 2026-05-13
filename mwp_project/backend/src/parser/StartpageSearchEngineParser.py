@@ -104,16 +104,15 @@ class StartpageSearchEngineParser:
                 
                 search_input = page.locator('input[name="query"]:visible, input[id="q"]:visible, input[type="text"]:visible').first
                 
-                await search_input.wait_for(state="visible", timeout=3000)
+                await search_input.wait_for(state="visible", timeout=10000)
                 await search_input.fill(query)
                 
-                async with page.expect_navigation(wait_until="domcontentloaded"):
-                    await page.keyboard.press("Enter")
+                await page.keyboard.press("Enter")
                     
                 try:
-                    await page.wait_for_selector('.w-gl', timeout=2000)
+                    await page.wait_for_selector('.w-gl', timeout=7500)
                 except Exception as e:
-                    print("[StartpageSearchEngineParser] | [WARN] Wait for selector timed out, proceeding anyway.")
+                    print("[StartpageSearchEngineParser] | [WARNING] Wait for selector timed out, proceeding anyway.")
                     
             return page
 
@@ -128,7 +127,10 @@ class StartpageSearchEngineParser:
             
             if (not success):
                 print(f"[StartpageSearchEngineParser] | [ERROR] Failed to parse url '{StartpageSearchEngineParser.__STARTPAGE_URL}': {result.error_message}")
-                return ""
+                return {
+                    "scraped_data": "",
+                    "search_result_urls": []
+                }
             
             print(f"[StartpageSearchEngineParser] | [INFO] Parsing completed successfully.")
 
