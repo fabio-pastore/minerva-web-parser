@@ -2,7 +2,8 @@ from src.parser.WebParser import WebParser
 from src.exceptions.WebParserException import WebParserException
 from crawl4ai import AsyncWebCrawler, BrowserConfig
 from crawl4ai.markdown_generation_strategy import DefaultMarkdownGenerator
-import re 
+import re
+import html 
 
 class GenericParser(WebParser):
 
@@ -88,11 +89,17 @@ class GenericParser(WebParser):
             extracted_html: str = result.html
             
             title_match = re.search(r'<title[^>]*>(.*?)</title>', extracted_html, re.IGNORECASE | re.DOTALL)
-            
-            meta_title = result.metadata.get("title", "Unknown title") if result.metadata else "Unknown title"
-            webpage_title: str = title_match.group(1).strip() if title_match else meta_title
-            content_title: str = webpage_title.split('|')[0].strip() if '|' in webpage_title else webpage_title
-            
+            webpage_title: str = ""
+
+            if title_match:
+                webpage_title = html.unescape(title_match.group(1))
+            elif result.metadata and result.metadata.get("title"):
+                webpage_title = html.unescape(str(result.metadata.get("title")))
+            else:
+                webpage_title = "Unknown title"
+
+            webpage_title = webpage_title.strip()
+            content_title = webpage_title.split('|')[0].strip() if '|' in webpage_title else webpage_title
             
             page_markdown: str = result.markdown.raw_markdown
             # inserts content title

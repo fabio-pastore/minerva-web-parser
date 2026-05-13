@@ -2,8 +2,8 @@ from src.parser.WebParser import WebParser
 from src.evaluator.BleuEvaluator import BleuEvaluator
 from src.exceptions.WebParserException import WebParserException
 from crawl4ai import DefaultMarkdownGenerator, AsyncWebCrawler, CrawlResult, BrowserConfig, CrawlerRunConfig, CacheMode
-from bs4 import BeautifulSoup
 import regex as re
+import html
 
 class MarvelParser(WebParser):
 
@@ -169,11 +169,19 @@ class MarvelParser(WebParser):
             if not success or result.markdown.raw_markdown == '\n':
                 return {}
 
-            soup: BeautifulSoup = BeautifulSoup(result.html, 'html.parser')
+            extracted_html: str = result.html
+            title_match = re.search(r'<title[^>]*>(.*?)</title>', extracted_html, re.IGNORECASE | re.DOTALL)
+            webpage_title: str = ""
 
-            title_tag = soup.find('title')
-            webpage_title: str = title_tag.get_text(strip=True) if title_tag else result.metadata.get("title", "Unknown title")
-            content_title: str = webpage_title.split('|')[0].strip() if '|' in webpage_title else webpage_title
+            if title_match:
+                webpage_title = html.unescape(title_match.group(1))
+            elif result.metadata and result.metadata.get("title"):
+                webpage_title = html.unescape(str(result.metadata.get("title")))
+            else:
+                webpage_title = "Unknown title"
+
+            webpage_title = webpage_title.strip()
+            content_title = webpage_title.split('|')[0].strip() if '|' in webpage_title else webpage_title
 
             page_markdown: str = result.markdown.raw_markdown
             page_markdown = self.__cleanup(page_markdown, content_title)
@@ -191,8 +199,6 @@ class MarvelParser(WebParser):
                 if (self._DEBUG):
                     print(f"[MarvelParser] | [WARNING] Computed preliminary evaluation score (BLEU) below minimum score for domain '{MarvelParser.__SUPPORTED_DOMAIN}' ({MarvelParser.__MIN_EVAL_SCORE}). The page (or article) may have been edited. Attempting fallback parse based on local GS data.")
                 return await self.parse_url(url, local_parse=True, raw_html=None)
-
-            extracted_html: str = result.html
 
             ret: dict[str, str] = {
                 "url": url,
