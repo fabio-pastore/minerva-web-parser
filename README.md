@@ -1,4 +1,19 @@
 # MWP - Minerva Web Parser
+<div>
+  <a href="https://github.com/fabio-pastore">
+    <img src="https://github.com/fabio-pastore.png" width="40" height="40" style="border-radius:50%" alt="Fabio Pastore"/>
+  </a>
+  &nbsp;
+  <a href="https://github.com/ywu24">
+    <img src="https://github.com/ywu24.png" width="40" height="40" style="border-radius:50%" alt="Yi Hao Wu"/>
+  </a>
+  &nbsp;
+  <a href="https://github.com/Zhanytrix">
+    <img src="https://github.com/Zhanytrix.png" width="40" height="40" style="border-radius:50%" alt="Alessandro Zannone"/>
+  </a>
+  <br/>
+  <sub>Built by <b>Fabio Pastore</b> · <b>Yi Hao Wu</b> · <b>Alessandro Zannone</b></sub>
+</div>
 
 <br>
 <p align="center">
